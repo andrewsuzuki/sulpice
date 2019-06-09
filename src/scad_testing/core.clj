@@ -44,15 +44,15 @@
 ;; Calculated ;;
 ;;;;;;;;;;;;;;;;
 
+; keyhole border width
+(def keyhole-bw
+    (/ (- keyhole-stagger-x keyhole-x) 2))
+
 (def keyhole-total-x
     (+ keyhole-x (* keyhole-bw 2)))
 
 (def keyhole-total-y
     (+ keyhole-y (* keyhole-bw 2)))
-
-; keyhole border width
-(def keyhole-bw
-    (/ (- keyhole-stagger-x keyhole-x) 2))
 
 ;;;;;;;;;;;
 ;; Utils ;;
@@ -120,10 +120,13 @@
          (rotate r)
          (translate t)))
 
-(defn insert-key-post [shape [r t]]
+(defn insert-key-post [shape [r t] & flags]
     (union
-        (difference shape
-                    (place key-chute-positive r t))
+        (if (contains? (set flags) :excavate)
+            (difference
+                shape
+                (place key-chute-positive r t))
+            shape)
         (place keyhole r t)))
 
 (defn insert-key-posts [shape]
@@ -144,47 +147,47 @@
 (def enclosure-translate [50 31 -5])
 
 ; TODO remove? (+ vars?)
-(def enclosure-top-old
-    (let [blank (cube enclosure-x enclosure-y enclosure-top-z)
-          cutout (translate [0 0 -5] (cube (- enclosure-x enclosure-wall) (- enclosure-y enclosure-wall) enclosure-top-z))
-          final (difference blank cutout)]
-         (translate enclosure-translate final)))
+; (def enclosure-top-old
+;     (let [blank (cube enclosure-x enclosure-y enclosure-top-z)
+;           cutout (translate [0 0 -5] (cube (- enclosure-x enclosure-wall) (- enclosure-y enclosure-wall) enclosure-top-z))
+;           final (difference blank cutout)]
+;          (translate enclosure-translate final)))
 
 ; look at places-by-col
 ; for each col, generate N and S walls based on position of those edges
 
-(defn make-enclosure-part [r t]
-    (let [[x y z] t
-          meet-z (+ z 5)
-          height (+ 15 meet-z)
-          orig (cube (+ keyhole-total-x 3)
-                     (+ keyhole-total-y 3)
-                     height)
-          cutout (->> orig (scale [0.9 0.9 1]) (translate [0 0 -3]))
-          final (difference orig cutout)]
-        (translate
-            [x y (+ meet-z (/ height -2))]
-            final)))
+; (defn make-enclosure-part [r t]
+;     (let [[x y z] t
+;           meet-z (+ z 5)
+;           height (+ 15 meet-z)
+;           orig (cube (+ keyhole-total-x 3)
+;                      (+ keyhole-total-y 3)
+;                      height)
+;           cutout (->> orig (scale [0.9 0.9 1]) (translate [0 0 -3]))
+;           final (difference orig cutout)]
+;         (translate
+;             [x y (+ meet-z (/ height -2))]
+;             final
 
-(def enclosure-top
-    (union
-        (concat
-            (map
-                (fn [col]
-                    (union
-                        (apply make-enclosure-part (first col))
-                        (apply make-enclosure-part (last col))))
-                          ; s (cube keyhole-total-x
-                          ;         3 ; wall thickness
-                          ;         (- 20 (get t-s 2)))]
-                        ; (translate [(get t-s 0)
-                          ;           (- (get t-s 1)
-                          ;              (/ keyhole-total-y 2))
-                          ;           (get t-s 2)]
-                          ;   s)))
+; (def enclosure-top
+;     (union
+;         (concat
+;             (map
+;                 (fn [col]
+;                     (union
+;                         (apply make-enclosure-part (first col))
+;                         (apply make-enclosure-part (last col))))
+;                           ; s (cube keyhole-total-x
+;                           ;         3 ; wall thickness
+;                           ;         (- 20 (get t-s 2)))]
+;                         ; (translate [(get t-s 0)
+;                           ;           (- (get t-s 1)
+;                           ;              (/ keyhole-total-y 2))
+;                           ;           (get t-s 2)]
+;                           ;   s)))
 
-                places-by-col))))
-        ; (translate enclosure-translate final)))
+;                places-by-col)
+;        ; (translate enclosure-translate final)))
 
 ; brand new algorithm:
 ; 1. cover every column end with wall
@@ -282,19 +285,19 @@
         (range start (+ total start))))
 
 (def thumb-places
-    (make-thumb-curve-places 5 50 25 -1))
+    (make-thumb-places 5 50 25 -1))
 
-(def thumbs-base-height 12)
+(def thumbs-base-height 15)
 (def thumbs-base
-    (let [whole (union (map (fn [[r t]] (place (cube 30 30 thumbs-base-height) r t)) thumb-curve-places))
-          cutout (union (map (fn [[r t]] (place (cube 25 25 thumbs-base-height) r t)) thumb-curve-places))]
+    (let [whole (union (map (fn [[r t]] (place (cube 30 30 thumbs-base-height) r t)) thumb-places))
+          cutout (union (map (fn [[r t]] (place (cube 25 25 thumbs-base-height) r t)) thumb-places))]
         (difference whole (translate [0 0 -5] cutout))))
 
 (def thumbs
-    (translate [0 -25 -5]
-        (reduce insert-key-post
+    (translate [0 -25 -3]
+        (reduce (fn [shape p] (insert-key-post shape p :excavate))
                 (translate [0 0 -4.5] thumbs-base)
-                thumb-curve-places)))
+                thumb-places)))
 
 ;;;;;;;;;;;;
 ; Finalize ;
