@@ -25,6 +25,8 @@
 ;; Parameters ;;
 ;;;;;;;;;;;;;;;;
 
+(def include-bottom?)
+
 (def rows 4)
 (def cols 6)
 
@@ -79,6 +81,8 @@
 (def keyhole-total-y
     (+ keyhole-y (* keyhole-bw 2)))
 
+; base-z is the z-coordinate of the lowest point
+; of the keyboard (excluding the bottom)
 (def base-z (-> wall-height
                 (/ 2)
                 (-')
@@ -262,37 +266,44 @@
     (union (map (fn [[r t]] (place keyhole r t))
                 thumb-places)))
 
-(def thumbs-base
+(def thumbs-solid-projection
     (let [keyhole-solid (cube keyhole-total-x keyhole-total-y keyhole-z)
           solid (union thumb-connectors
                      (union (map (fn [[r t]] (place keyhole-solid r t))
-                                thumb-places)))
-          solid-projection (project solid)
-          wall-outline (difference
-                          solid-projection
-                          (offset (-' wall-thickness) solid-projection))
-          bottom (extrude-linear {:height bottom-height} solid-projection)]
-        (union
-            (translate [0 0 (- (/ bottom-height 2) (/ thumb-wall-height 2))] bottom)
-            (extrude-linear {:height thumb-wall-height} wall-outline))))
+                                thumb-places)))]
+      (project solid)))
+
+(def thumbs-walls
+    (->> thumbs-solid-projection
+         (offset (-' wall-thickness))
+         (difference thumbs-solid-projection)
+         (extrude-linear {:height thumb-wall-height})))
 
 (def thumbs-offset-y -20)
 
+(def thumbs-bottom
+    (->> thumbs-solid-projection
+         (extrude-linear {:height bottom-height})))
+
 (def thumbs
-    (translate [0 thumbs-offset-y 0]
-        (let [translate-top-z (- (+ base-z thumb-wall-height) keyhole-z)]
-           (union (translate [0 0 translate-top-z]
-                             (union
-                                 thumb-keyholes
-                                 thumb-connectors))
-                  (translate [0 0 (+ base-z (/ thumb-wall-height 2))] thumbs-base)))))
+    (translate [0 thumbs-offset-y base-z]
+       (union
+           ; bottom
+           (if include-bottom? (translate [0 0 (-' (/ bottom-height 2))] thumbs-bottom) nil)
+           ; top
+           (translate [0 0 (- thumb-wall-height keyhole-z)]
+               (union
+                   thumb-keyholes
+                   thumb-connectors))
+           ; walls
+           (translate [0 0 (/ thumb-wall-height 2)] thumbs-walls))))
 
 ;;;;;;;;;;
 ; Bottom ;
 ;;;;;;;;;;
 
 ; TODO
-(def bottom
+(def primary-bottom
     nil)
 
 ;;;;;;;;;;;;
@@ -304,7 +315,7 @@
         enclosure-top
         primary-keyholes
         thumbs
-        bottom))
+        primary-bottom))
 
 (defn save [& body]
     (spit "things/right.scad" (apply write-scad body)))
