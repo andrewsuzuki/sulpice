@@ -7,6 +7,16 @@
 ;; by Andrew Suzuki
 ;;;;;;;;;;;;;;;;;;;;;
 
+; TODOS
+; - DONE remove old code
+; - DONE remove main wall near thumb
+; - sides
+; - bottom
+; - ports
+; - make rotation-z-compensate a sum of prev (up to home)
+; - position walls relative to TOP of keyholes (instead of center) -- i.e. account for rotation
+; - more documentation
+
 ;;;;;;;;;;;;;;;;
 ;; Parameters ;;
 ;;;;;;;;;;;;;;;;
@@ -39,6 +49,11 @@
                   3 {:y 6 :z -2} ; l col (ring)
                   4 {:y -5 :z 0} ; semi col (pinky)
                   5 {:y -5 :z 0}}) ; extra2 col (pinky)
+
+; enclosure wall thickness
+(def wall-thickness 2)
+; enclosure height
+(def wall-height 20)
 
 ;;;;;;;;;;;;;;;;
 ;; Calculated ;;
@@ -139,63 +154,6 @@
 ; Enclosure ;
 ;;;;;;;;;;;;;
 
-(def enclosure-x 130)
-(def enclosure-y 100)
-(def enclosure-top-z 15)
-(def enclosure-wall 10)
-(def bottom-z 5)
-(def enclosure-translate [50 31 -5])
-
-; TODO remove? (+ vars?)
-; (def enclosure-top-old
-;     (let [blank (cube enclosure-x enclosure-y enclosure-top-z)
-;           cutout (translate [0 0 -5] (cube (- enclosure-x enclosure-wall) (- enclosure-y enclosure-wall) enclosure-top-z))
-;           final (difference blank cutout)]
-;          (translate enclosure-translate final)))
-
-; look at places-by-col
-; for each col, generate N and S walls based on position of those edges
-
-; (defn make-enclosure-part [r t]
-;     (let [[x y z] t
-;           meet-z (+ z 5)
-;           height (+ 15 meet-z)
-;           orig (cube (+ keyhole-total-x 3)
-;                      (+ keyhole-total-y 3)
-;                      height)
-;           cutout (->> orig (scale [0.9 0.9 1]) (translate [0 0 -3]))
-;           final (difference orig cutout)]
-;         (translate
-;             [x y (+ meet-z (/ height -2))]
-;             final
-
-; (def enclosure-top
-;     (union
-;         (concat
-;             (map
-;                 (fn [col]
-;                     (union
-;                         (apply make-enclosure-part (first col))
-;                         (apply make-enclosure-part (last col))))
-;                           ; s (cube keyhole-total-x
-;                           ;         3 ; wall thickness
-;                           ;         (- 20 (get t-s 2)))]
-;                         ; (translate [(get t-s 0)
-;                           ;           (- (get t-s 1)
-;                           ;              (/ keyhole-total-y 2))
-;                           ;           (get t-s 2)]
-;                           ;   s)))
-
-;                places-by-col)
-;        ; (translate enclosure-translate final)))
-
-; brand new algorithm:
-; 1. cover every column end with wall
-; 2. look between every column. if same length, do nothing. else, use a little wall segment to join two column walls; placing it on the side of the shorter column.
-
-(def wall-thickness 2)
-(def wall-height 20)
-
 (defn make-wall-col [t addsub]
      (translate [(get t 0)
                  (addsub (get t 1) (/ keyhole-total-y 2) (/ wall-thickness 2))
@@ -265,9 +223,9 @@
             wall-connectors-north
             wall-connectors-south)))
 
+; TODO
 (def bottom
-    (translate [(first enclosure-translate) (second enclosure-translate) (- (-' enclosure-top-z) 0)]
-        (cube enclosure-x enclosure-y bottom-z)))
+    nil)
 
 ;;;;;;;;;;;;;;;;;
 ; Thumb Cluster ;
@@ -288,13 +246,14 @@
     (make-thumb-places 5 50 25 -1))
 
 (def thumbs-base-height 15)
+(def thumbs-base-solid
+    (union (map (fn [[r t]] (place (cube 30 30 thumbs-base-height) r t)) thumb-places)))
 (def thumbs-base
-    (let [whole (union (map (fn [[r t]] (place (cube 30 30 thumbs-base-height) r t)) thumb-places))
-          cutout (union (map (fn [[r t]] (place (cube 25 25 thumbs-base-height) r t)) thumb-places))]
-        (difference whole (translate [0 0 -5] cutout))))
+    (let [cutout (union (map (fn [[r t]] (place (cube 28 28 thumbs-base-height) r t)) thumb-places))]
+        (difference thumbs-base-solid (translate [0 0 -5] cutout))))
 
 (def thumbs
-    (translate [0 -25 -3]
+    (translate [0 -20 -3]
         (reduce (fn [shape p] (insert-key-post shape p :excavate))
                 (translate [0 0 -4.5] thumbs-base)
                 thumb-places)))
@@ -305,13 +264,14 @@
 
 (def key-platform
     (-> enclosure-top
+        (difference (translate [0 -20 -7.5] thumbs-base-solid))
         (insert-key-posts)))
 
 (def final
     (union
         thumbs
-        key-platform))
-        ; bottom))
+        key-platform
+        bottom))
 
 (defn save [& body]
     (spit "things/right.scad" (apply write-scad body)))
