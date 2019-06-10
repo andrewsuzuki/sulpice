@@ -9,13 +9,17 @@
 
 ; TODOS
 ; - DONE remove old code
-; - DONE remove main wall near thumb
+; - DONE new thumb enclosure
+; - remove main wall near thumb
+; - more vars
 ; - sides
 ; - bottom
 ; - ports
 ; - make rotation-z-compensate a sum of prev (up to home)
 ; - position walls relative to TOP of keyholes (instead of center) -- i.e. account for rotation
 ; - more documentation
+; - name
+; - github
 
 ;;;;;;;;;;;;;;;;
 ;; Parameters ;;
@@ -54,6 +58,12 @@
 (def wall-thickness 2)
 ; enclosure height
 (def wall-height 20)
+; translate enclosure
+(def main-wall-translate-z -5)
+
+(def thumb-wall-height 15)
+
+(def bottom-height 2)
 
 ;;;;;;;;;;;;;;;;
 ;; Calculated ;;
@@ -69,12 +79,22 @@
 (def keyhole-total-y
     (+ keyhole-y (* keyhole-bw 2)))
 
+(def base-z (-> wall-height
+                (/ 2)
+                (-')
+                (+ main-wall-translate-z)))
+
 ;;;;;;;;;;;
 ;; Utils ;;
 ;;;;;;;;;;;
 
 (defn deg2rad [degrees]
     (/ (* degrees pi) 180))
+
+(defn place [shape r t]
+    (->> shape
+         (rotate r)
+         (translate t)))
 
 ;;;;;;;;;;;
 ;; Model ;;
@@ -127,28 +147,9 @@
                 (mirror [1 0 0])
                 (mirror [0 1 0])))))
 
-(def key-chute-positive
-    (cube keyhole-total-x keyhole-total-y 100000))
-
-(defn place [shape r t]
-    (->> shape
-         (rotate r)
-         (translate t)))
-
-(defn insert-key-post [shape [r t] & flags]
-    (union
-        (if (contains? (set flags) :excavate)
-            (difference
-                shape
-                (place key-chute-positive r t))
-            shape)
-        (place keyhole r t)))
-
-(defn insert-key-posts [shape]
-    (reduce
-        insert-key-post
-        shape
-        places))
+(def primary-keyholes
+    (union (map (fn [[r t]] (place keyhole r t))
+                places)))
 
 ;;;;;;;;;;;;;
 ; Enclosure ;
@@ -216,16 +217,13 @@
                                 wall-height)))))
              (partition 2 1 places-by-col))))
 
+; TODO subtract thumb cluster walls
 (def enclosure-top
-    (translate [0 0 -5]
+    (translate [0 0 main-wall-translate-z]
         (union
             wall-cols
             wall-connectors-north
             wall-connectors-south)))
-
-; TODO
-(def bottom
-    nil)
 
 ;;;;;;;;;;;;;;;;;
 ; Thumb Cluster ;
@@ -245,32 +243,67 @@
 (def thumb-places
     (make-thumb-places 5 50 25 -1))
 
-(def thumbs-base-height 15)
-(def thumbs-base-solid
-    (union (map (fn [[r t]] (place (cube 30 30 thumbs-base-height) r t)) thumb-places)))
+(defn make-thumb-connector-face [[r t] & flags]
+    (let [half-raw (/ keyhole-total-x 2)
+          x-offset (if (contains? (set flags) :left)
+                      half-raw
+                      (-' half-raw))
+          z-offset (/ keyhole-z 2)]
+        (place (translate [x-offset 0 z-offset] (cube 0.0001 keyhole-total-y keyhole-z)) r t)))
+(def thumb-connectors
+    (union
+        (map (fn [[t1 t2]]
+                (let [f1 (make-thumb-connector-face t1 :right)
+                      f2 (make-thumb-connector-face t2 :left)]
+                    (hull f1 f2)))
+             (partition 2 1 thumb-places))))
+
+(def thumb-keyholes
+    (union (map (fn [[r t]] (place keyhole r t))
+                thumb-places)))
+
 (def thumbs-base
-    (let [cutout (union (map (fn [[r t]] (place (cube 28 28 thumbs-base-height) r t)) thumb-places))]
-        (difference thumbs-base-solid (translate [0 0 -5] cutout))))
+    (let [keyhole-solid (cube keyhole-total-x keyhole-total-y keyhole-z)
+          solid (union thumb-connectors
+                     (union (map (fn [[r t]] (place keyhole-solid r t))
+                                thumb-places)))
+          solid-projection (project solid)
+          wall-outline (difference
+                          solid-projection
+                          (offset (-' wall-thickness) solid-projection))
+          bottom (extrude-linear {:height bottom-height} solid-projection)]
+        (union
+            (translate [0 0 (- (/ bottom-height 2) (/ thumb-wall-height 2))] bottom)
+            (extrude-linear {:height thumb-wall-height} wall-outline))))
+
+(def thumbs-offset-y -20)
 
 (def thumbs
-    (translate [0 -20 -3]
-        (reduce (fn [shape p] (insert-key-post shape p :excavate))
-                (translate [0 0 -4.5] thumbs-base)
-                thumb-places)))
+    (translate [0 thumbs-offset-y 0]
+        (let [translate-top-z (- (+ base-z thumb-wall-height) keyhole-z)]
+           (union (translate [0 0 translate-top-z]
+                             (union
+                                 thumb-keyholes
+                                 thumb-connectors))
+                  (translate [0 0 (+ base-z (/ thumb-wall-height 2))] thumbs-base)))))
+
+;;;;;;;;;;
+; Bottom ;
+;;;;;;;;;;
+
+; TODO
+(def bottom
+    nil)
 
 ;;;;;;;;;;;;
 ; Finalize ;
 ;;;;;;;;;;;;
 
-(def key-platform
-    (-> enclosure-top
-        (difference (translate [0 -20 -7.5] thumbs-base-solid))
-        (insert-key-posts)))
-
 (def final
     (union
+        enclosure-top
+        primary-keyholes
         thumbs
-        key-platform
         bottom))
 
 (defn save [& body]
