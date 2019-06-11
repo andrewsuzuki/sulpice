@@ -1,7 +1,8 @@
 (ns sulpice.core
     (:refer-clojure :exclude [use import])
     (:require [scad-clj.scad :refer :all]
-              [scad-clj.model :refer :all]))
+              [scad-clj.model :refer :all]
+              [clojure.java.io :refer [make-parents]]))
 
 ;;;;;;;;;;;;;;;;;;
 ;; Sulpice       ;
@@ -638,5 +639,6 @@
 (defn -main
     "Save keyboard as scad"
     [& args]
+    (make-parents "things/dummy.txt")
     (save)
     (println "Generated scad files"))
