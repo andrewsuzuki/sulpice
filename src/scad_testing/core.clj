@@ -58,7 +58,7 @@
                   5 {:y -5 :z 0}}) ; extra2 col (pinky)
 
 ; enclosure wall thickness
-(def wall-thickness 2)
+(def wall-thickness 3)
 ; enclosure height
 (def wall-height 20)
 ; translate enclosure z
@@ -71,8 +71,6 @@
 ; height of the bottom cover
 (def bottom-height 2)
 
-; y offset of thumb cluster
-(def thumbs-offset-y -22)
 ; height of thumb walls
 ; keyhole z position is calculated from this
 (def thumbs-wall-height 15)
@@ -104,6 +102,12 @@
 ; (exterior and for interior thumb cluster port)
 (def port-z
     (+ base-z port-from-bottom))
+
+; y offset of thumb cluster
+(def thumbs-offset-y
+    (- main-wall-squish
+       wall-thickness
+       keyhole-total-y))
 
 ;;;;;;;;;;;
 ;; Utils ;;
@@ -258,9 +262,10 @@
         [(- 0 (/ wall-thickness 2) (/ keyhole-total-x 2))
          (-
              (+ (/ sidewall-y 2)
-                (get-in col-offsets [0 :y]))
+                (get-in col-offsets [0 :y])
+                main-wall-squish)
              (/ keyhole-total-y 2)
-             main-wall-squish)
+             wall-thickness)
          0]
         sidewall))
 
@@ -271,14 +276,14 @@
           (- (* cols keyhole-total-x) (/ keyhole-total-x 2)))
          (-
            (+ (/ sidewall-y 2)
-              (get-in col-offsets [(dec cols) :y]))
+              (get-in col-offsets [(dec cols) :y])
+              main-wall-squish)
            (/ keyhole-total-y 2)
-           main-wall-squish)
+           wall-thickness)
          0]
         sidewall))
 
-; TODO rename
-(def enclosure-top
+(def primary-enclosure
     (translate [0 0 main-wall-translate-z]
         (union
             sidewall-left
@@ -384,7 +389,7 @@
 (def final
     (difference
         (union
-            enclosure-top
+            primary-enclosure
             primary-keyholes
             thumbs
             primary-bottom)
