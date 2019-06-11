@@ -8,7 +8,8 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 ; TODO
-; - screwholes
+; - place screwholes and 1cm screwhole reinforcements
+; - bottom pad wells
 ; - more documentation
 ; - name
 ; - github
@@ -18,7 +19,11 @@
 ;; Parameters ;;
 ;;;;;;;;;;;;;;;;
 
-(def include-bottom? false)
+; include bottom in right.scad/left.scad exports
+; (use for preview, not printing)
+(def include-bottom? true)
+
+; KEYHOLE PLACEMENT
 
 (def rows 4)
 (def cols 6)
@@ -50,6 +55,8 @@
                   4 {:y -5 :z 0} ; semi col (pinky)
                   5 {:y -5 :z 0}}) ; extra2 col (pinky)
 
+; WALL
+
 ; enclosure wall thickness
 (def wall-thickness 2)
 
@@ -71,12 +78,37 @@
 ; keyhole z position is calculated from this
 (def thumbs-wall-height 15)
 
+; PORTS
+
 ; distance from bottom (not including bottom plate)
 ; to the centerpoint of exterior and interior ports
 (def port-from-bottom 5)
 
 ; y offset from rear of case to the trrs port
-(def trrs-port-offset 5)
+(def trrs-port-offset 10)
+
+; SCREWS
+
+; self-tapping m3 insert outside diameter
+(def screw-insert-diameter 4.6) ; TODO test + verify
+
+; self-tapping m3 insert height
+(def screw-insert-height 6)
+
+; screw diameter (m3)
+(def screw-diameter 3)
+
+; screw head cone height
+(def screw-cone-height 1.65)
+
+; screw head cone max diameter (at end)
+(def screw-cone-diameter 5.5)
+
+; screw support cylinder diameter (surrounds screw insert)
+(def screw-support-diameter 7)
+
+; screw support cylinder height (surrounds screw insert)
+(def screw-support-height (+ screw-insert-height 2))
 
 ;;;;;;;;;;;;;;;;
 ;; Calculated ;;
@@ -111,6 +143,36 @@
     (- main-wall-squish
        wall-thickness
        keyhole-total-y))
+
+(def screw-places
+    (let [support-radius (/ screw-support-diameter 2)
+          kx-half (/ keyhole-total-x 2)
+          ky-half (/ keyhole-total-y 2)
+          first-col (first places-by-col)
+          last-col (last places-by-col)
+          ns-wall-effective (- wall-thickness main-wall-squish)
+          compensate (fn [coord & flags]
+                         (let [flagset (set flags)
+                               out? (contains? flagset :out)
+                               y? (contains? flagset :y)]
+                             (-> coord
+                                 (get (if y? 1 0))
+                                 ((if out? + -) kx-half (if y? ns-wall-effective wall-thickness))
+                                 ((if out? - +) support-radius))))
+          bottom-left-t (-> first-col (first) (get 1))
+          top-left-t (-> first-col (last) (get 1))
+          bottom-right-t (-> last-col (first) (get 1))
+          top-right-t (-> last-col (last) (get 1))
+          left-wall-x (compensate bottom-left-t :x :in)
+          right-wall-x (compensate bottom-right-t :x :out)]
+         ; bottom left
+        [[left-wall-x (compensate bottom-left-t :y :in)]
+         ; top left
+         [left-wall-x (compensate top-left-t :y :out)]
+         ; bottom right
+         [right-wall-x (compensate bottom-right-t :y :in)]
+         ; top right
+         [right-wall-x (compensate top-right-t :y :out)]]))
 
 ;;;;;;;;;;;
 ;; Utils ;;
@@ -432,13 +494,34 @@
                      (- left-corner-y (/ wall-thickness 2))
                      port-z])))
 
+(def screw-cutout-shape
+    ; NOTE origin is located between insert and base hole
+    (union
+        ; insert
+        (translate [0 0 (/ screw-insert-height 2)]
+                   (cylinder (/ screw-insert-diameter 2) screw-insert-height))
+        ; base hole
+        (translate [0 0 (-' (/ bottom-height 2))]
+                   (cylinder (/ screw-diameter 2) bottom-height))
+        ; base conical head
+        (translate [0 0 (- (/ screw-cone-height 2) bottom-height)]
+                   (cylinder [(/ screw-cone-diameter 2) (/ screw-diameter 2)] screw-cone-height))))
+
+(def screw-cutouts
+    (union
+        (map (fn [t]
+                 (translate [(first t) (second t) base-z]
+                            screw-cutout-shape))
+             screw-places)))
+
 ; Collect individual cutouts
 
 ; cutouts common to both sides (including bottoms)
 (def universal-cutouts
     (union
         thumbs-port-cutout
-        trrs-port-cutout))
+        trrs-port-cutout
+        screw-cutouts))
 
 ; cutouts for right side
 (def right-cutouts
@@ -448,6 +531,21 @@
 (def left-cutouts
     (union
         usb-port-cutout))
+
+;;;;;;;;;;;;;;;;;;;
+; Screw Placement ;
+;;;;;;;;;;;;;;;;;;;
+
+(def screw-supports
+    (let [support (cylinder (/ screw-support-diameter 2)
+                            screw-support-height)]
+        (union
+            (map (fn [t]
+                     (translate [(first t)
+                                 (second t)
+                                 (+ base-z (/ screw-support-height 2))]
+                                support))
+                 screw-places))))
 
 ;;;;;;;;;;;;
 ; Finalize ;
@@ -469,9 +567,10 @@
             (union
                 primary-enclosure
                 primary-keyholes
-                thumbs)
+                thumbs
+                screw-supports)
             universal-cutouts)
-        (if include-bottom? bottom nil)))
+        (if include-bottom? bottom-right nil)))
 
 (def right
     (difference
