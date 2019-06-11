@@ -7,15 +7,7 @@
 ;; by Andrew Suzuki
 ;;;;;;;;;;;;;;;;;;;;;
 
-; TODOS
-; - DONE remove old code
-; - DONE new thumb enclosure
-; - DONE thumb cluster port
-; - DONE make rotation-z-compensate a sum of prev (up to home)
-; - DONE remove degree units (all radians)
-; - DONE main walls accoutnt for keyhole rotation (main-wall-squish)
-; - DONE sides
-; - bottom
+; TODO
 ; - ports
 ; - screwholes
 ; - more documentation
@@ -58,7 +50,7 @@
                   5 {:y -5 :z 0}}) ; extra2 col (pinky)
 
 ; enclosure wall thickness
-(def wall-thickness 3)
+(def wall-thickness 2)
 ; enclosure height
 (def wall-height 20)
 ; translate enclosure z
@@ -117,6 +109,9 @@
     (->> shape
          (rotate r)
          (translate t)))
+
+(defn make-left [shape]
+    (mirror [1 0 0] shape))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Keyhole Placement ;;
@@ -179,8 +174,16 @@
                 (mirror [1 0 0])
                 (mirror [0 1 0])))))
 
+; a solid cube representing the space of a keyhole
+(def dummy-keyhole
+    (cube keyhole-total-x keyhole-total-y keyhole-z))
+
 (def primary-keyholes
     (union (map (fn [[r t]] (place keyhole r t))
+                places)))
+
+(def primary-dummy-keyholes
+    (union (map (fn [[r t]] (place dummy-keyhole r t))
                 places)))
 
 ;;;;;;;;;;;;;
@@ -344,13 +347,14 @@
 
 (def thumbs-bottom
     (->> thumbs-solid-projection
-         (extrude-linear {:height bottom-height})))
+         (extrude-linear {:height bottom-height})
+         (translate [0
+                     thumbs-offset-y
+                     (- base-z (/ bottom-height 2))])))
 
 (def thumbs
     (translate [0 thumbs-offset-y base-z]
        (union
-           ; bottom
-           (if include-bottom? (translate [0 0 (-' (/ bottom-height 2))] thumbs-bottom) nil)
            ; top
            (translate [0 0 (- thumbs-wall-height keyhole-z)]
                (union
@@ -363,9 +367,18 @@
 ; Bottom ;
 ;;;;;;;;;;
 
-; TODO
+(def primary-solid
+    (union
+        primary-enclosure
+        primary-dummy-keyholes))
+
 (def primary-bottom
-    nil)
+    (->> (union
+             primary-enclosure
+             primary-dummy-keyholes)
+         (project)
+         (extrude-linear {:height bottom-height})
+         (translate [0 0 (- base-z (/ bottom-height 2))])))
 
 ;;;;;;;;;;;
 ; Cutouts ;
@@ -382,21 +395,39 @@
     (union
         thumbs-port-cutout))
 
+(defn apply-cutouts [shape]
+    (difference shape cutouts))
+
 ;;;;;;;;;;;;
 ; Finalize ;
 ;;;;;;;;;;;;
 
-(def final
-    (difference
+(def bottom-right
+    (apply-cutouts
         (union
-            primary-enclosure
-            primary-keyholes
-            thumbs
-            primary-bottom)
-        cutouts))
+            primary-bottom
+            thumbs-bottom)))
+
+(def bottom-left
+    (make-left bottom-right))
+
+(def right
+    (union
+        (apply-cutouts
+            (union
+                primary-enclosure
+                primary-keyholes
+                thumbs))
+        (if include-bottom? bottom nil)))
+
+(def left
+    (make-left right))
 
 (defn save [& body]
-    (spit "things/right.scad" (apply write-scad body)))
+    (spit "things/right.scad" (apply write-scad right))
+    (spit "things/left.scad" (apply write-scad left))
+    (spit "things/bottom-right.scad" (apply write-scad bottom-right))
+    (spit "things/bottom-left.scad" (apply write-scad bottom-left)))
 
 (defn -main
     "Save keyboard as scad"
