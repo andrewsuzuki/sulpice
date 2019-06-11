@@ -8,7 +8,6 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 ; TODO
-; - place screwholes and 1cm screwhole reinforcements
 ; - bottom pad wells
 ; - more documentation
 ; - name
@@ -390,6 +389,7 @@
                       (-' half-raw))
           z-offset (/ keyhole-z 2)]
         (place (translate [x-offset 0 z-offset] (cube 0.0001 keyhole-total-y keyhole-z)) r t)))
+
 (def thumbs-connectors
     (union
         (map (fn [[t1 t2]]
@@ -484,12 +484,33 @@
          ; top right
          [right-wall-x (compensate top-right-t :y :out)]]))
 
-(def thumb-screw-places
-    ; TODO
-    [])
+(def thumbs-screw-places
+    (let [t-right (first thumbs-places)
+          t-left (last thumbs-places)
+          t-right-r (get-in t-right [0 2])
+          t-right-t (get t-right 1)
+          t-left-r (get-in t-left [0 2])
+          t-left-t (get t-left 1)
+          right [(-> t-right-r
+                     (Math/cos)
+                     (* (- (/ keyhole-total-x 2) (/ screw-support-diameter 2)))
+                     (+ (get t-right-t 0)))
+                 (-> t-right-r
+                     (Math/sin)
+                     (* (- (/ keyhole-total-x 2) (/ screw-support-diameter 2)))
+                     (+ (get t-right-t 1) thumbs-offset-y))]
+          left [(-> t-left-r
+                    (Math/cos)
+                    (* (- (/ screw-support-diameter 2) (/ keyhole-total-x 2)))
+                    (+ (get t-left-t 0)))
+                (-> t-left-r
+                    (Math/sin)
+                    (* (- (/ screw-support-diameter 2) (/ keyhole-total-x 2)))
+                    (+ (get t-left-t 1) thumbs-offset-y))]]
+        [right left]))
 
 (def screw-places
-    (concat primary-screw-places thumb-screw-places))
+    (concat primary-screw-places thumbs-screw-places))
 
 (def screw-supports
     (let [support (cylinder (/ screw-support-diameter 2)
