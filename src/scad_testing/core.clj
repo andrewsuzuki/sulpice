@@ -11,13 +11,12 @@
 ; - DONE remove old code
 ; - DONE new thumb enclosure
 ; - DONE thumb cluster port
-; - more vars
+; - DONE make rotation-z-compensate a sum of prev (up to home)
+; - position walls relative to TOP of keyholes (instead of center) -- i.e. account for rotation
 ; - sides
 ; - bottom
 ; - ports
 ; - screwholes
-; - make rotation-z-compensate a sum of prev (up to home)
-; - position walls relative to TOP of keyholes (instead of center) -- i.e. account for rotation
 ; - more documentation
 ; - name
 ; - github
@@ -118,6 +117,21 @@
 ;; Model ;;
 ;;;;;;;;;;;
 
+(defn get-place-rotation [row]
+    (deg2rad (* rotate-fore-aft-step (- row home-row))))
+
+(defn get-z-compensate [row]
+    (->> (if (< row home-row)
+             (range row (inc home-row))
+             (range home-row (inc row)))
+         (map (fn [r]
+                  (->> r
+                       get-place-rotation
+                       Math/sin
+                       Math/abs
+                       (* (/ keyhole-total-y 2)))))
+         (apply +)))
+
 ; places describes the center of each keyhole
 ; used to position the keyholes themselves,
 ; as well as the connectors between keyholes
@@ -126,17 +140,12 @@
              (let [col-offset-y (or (get-in col-offsets [col :y] 0))
                    col-offset-z (or (get-in col-offsets [col :z] 0))]
                   (map (fn [row]
-                           (let [rotation (deg2rad (* rotate-fore-aft-step (- row home-row)))
-                                 ; TODO NOTE
-                                 ; the compensation should be a sum of all previous rows
-                                 ; as well (until the home row)
-                                 rotation-z-compensate (* (/ keyhole-total-y 2) (Math/abs (Math/sin rotation)))]
-                               [; rotate
-                                [rotation 0 0]
-                                ; translate
-                                [(* col keyhole-stagger-x)
-                                 (+ (* row keyhole-stagger-y) col-offset-y)
-                                 (+ col-offset-z rotation-z-compensate)]]))
+                           [; rotate
+                            [(get-place-rotation row) 0 0]
+                            ; translate
+                            [(* col keyhole-stagger-x)
+                             (+ (* row keyhole-stagger-y) col-offset-y)
+                             (+ col-offset-z (get-z-compensate row))]])
                        (range 0 rows))))
          (range 0 cols)))
 (def places
