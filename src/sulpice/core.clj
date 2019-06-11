@@ -173,6 +173,14 @@
         (+ (* wall-thickness 2))
         (- (* primary-wall-squish 2))))
 
+; y-coordinate of the left corner
+; (used for port positioning)
+(def left-corner-y
+    (+ (* keyhole-total-y (- rows 0.5))
+       (get-in col-offsets [0 :y])
+       wall-thickness
+       (-' primary-wall-squish)))
+
 ;;;;;;;;;;;
 ;; Utils ;;
 ;;;;;;;;;;;
@@ -570,12 +578,6 @@
          (translate [0
                      (+ thumbs-offset-y (/ keyhole-total-y 2)) ; this is an estimate
                      port-z])))
-
-(def left-corner-y
-    (+ (* keyhole-total-y (- rows 0.5))
-       (get-in col-offsets [0 :y])
-       wall-thickness
-       (-' primary-wall-squish)))
 
 (def trrs-port-cutout
     (->> (cylinder 2 wall-thickness)
