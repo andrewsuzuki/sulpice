@@ -11,8 +11,6 @@
 ; TODO
 ; - bottom pad wells
 ; - more documentation
-; - name
-; - github
 ; - [after first print] teensy / mcp holders
 
 ;;;;;;;;;;;;;;;;
@@ -55,7 +53,7 @@
                   4 {:y -5 :z 0} ; semi col (pinky)
                   5 {:y -5 :z 0}}) ; extra2 col (pinky)
 
-; WALL
+; ENCLOSURE / WALL
 
 ; enclosure wall thickness
 (def wall-thickness 2)
@@ -64,21 +62,21 @@
 (def wall-height 20)
 
 ; translate enclosure z
-; also equal to the z midpoint of the main wall
-(def main-wall-translate-z -5)
+; also equal to the z midpoint of the primary wall
+(def primary-wall-translate-z -5)
 
 ; amount to squish walls into keyholes (y direction)
 ; (crudely compensates for gaps due to keyhole rotation)
-(def main-wall-squish 1)
+(def primary-wall-squish 1)
 
 ; height of the bottom cover
 (def bottom-height 2)
 
+; THUMBS
+
 ; height of thumb walls
 ; keyhole z position is calculated from this
 (def thumbs-wall-height 15)
-
-; THUMBS
 
 ; total number of thumb switches
 (def thumbs-total 5)
@@ -145,7 +143,7 @@
 (def base-z (-> wall-height
                 (/ 2)
                 (-')
-                (+ main-wall-translate-z)))
+                (+ primary-wall-translate-z)))
 
 ; the z coordinate of the center of all port cutouts
 ; (exterior and for interior thumb cluster port)
@@ -154,7 +152,7 @@
 
 ; y offset of thumb cluster
 (def thumbs-offset-y
-    (- main-wall-squish
+    (- primary-wall-squish
        wall-thickness
        keyhole-total-y))
 
@@ -258,7 +256,7 @@
 
 (defn make-wall-col [t addsub]
      (translate [(get t 0)
-                 (addsub (get t 1) (/ keyhole-total-y 2) (/ wall-thickness 2) (-' main-wall-squish))
+                 (addsub (get t 1) (/ keyhole-total-y 2) (/ wall-thickness 2) (-' primary-wall-squish))
                  0]
         (cube keyhole-total-x wall-thickness wall-height)))
 
@@ -287,7 +285,7 @@
                                        (if (< y-l y-r)
                                          (+ (get t-l 0) m)
                                          (- (get t-r 0) m)))
-                                    (+ (/ keyhole-total-y 2) (get t-short 1) (/ length 2) (-' main-wall-squish))
+                                    (+ (/ keyhole-total-y 2) (get t-short 1) (/ length 2) (-' primary-wall-squish))
                                     0]
                             (cube
                                 wall-thickness
@@ -310,7 +308,7 @@
                                        (if (< y-l y-r)
                                          (- (get t-r 0) m)
                                          (+ (get t-l 0) m)))
-                                    (- (get t-short 1) (/ keyhole-total-y 2) (/ length 2) (-' main-wall-squish))
+                                    (- (get t-short 1) (/ keyhole-total-y 2) (/ length 2) (-' primary-wall-squish))
                                     0]
                             (cube
                                 wall-thickness
@@ -319,7 +317,7 @@
              (partition 2 1 places-by-col))))
 
 (def sidewall-y
-    (- (+ (* rows keyhole-total-y) (* wall-thickness 2)) (* main-wall-squish 2)))
+    (- (+ (* rows keyhole-total-y) (* wall-thickness 2)) (* primary-wall-squish 2)))
 (def sidewall
     (cube
         wall-thickness
@@ -332,7 +330,7 @@
          (-
              (+ (/ sidewall-y 2)
                 (get-in col-offsets [0 :y])
-                main-wall-squish)
+                primary-wall-squish)
              (/ keyhole-total-y 2)
              wall-thickness)
          0]
@@ -346,14 +344,14 @@
          (-
            (+ (/ sidewall-y 2)
               (get-in col-offsets [(dec cols) :y])
-              main-wall-squish)
+              primary-wall-squish)
            (/ keyhole-total-y 2)
            wall-thickness)
          0]
         sidewall))
 
 (def primary-enclosure
-    (translate [0 0 main-wall-translate-z]
+    (translate [0 0 primary-wall-translate-z]
         (union
             sidewall-left
             sidewall-right
@@ -461,7 +459,7 @@
           ky-half (/ keyhole-total-y 2)
           first-col (first places-by-col)
           last-col (last places-by-col)
-          ns-wall-effective (- wall-thickness main-wall-squish)
+          ns-wall-effective (- wall-thickness primary-wall-squish)
           compensate (fn [coord & flags]
                          (let [flagset (set flags)
                                out? (contains? flagset :out)
@@ -541,7 +539,7 @@
     (+ (* keyhole-total-y (- rows 0.5))
        (get-in col-offsets [0 :y])
        wall-thickness
-       (-' main-wall-squish)))
+       (-' primary-wall-squish)))
 
 (def trrs-port-cutout
     (->> (cylinder 2 wall-thickness)
