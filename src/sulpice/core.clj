@@ -1,11 +1,12 @@
-(ns scad-testing.core
+(ns sulpice.core
     (:refer-clojure :exclude [use import])
     (:require [scad-clj.scad :refer :all]
               [scad-clj.model :refer :all]))
 
-;; Keyboard
-;; by Andrew Suzuki
-;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;
+;; Sulpice       ;
+;; Andrew Suzuki ;
+;;;;;;;;;;;;;;;;;;
 
 ; TODO
 ; - bottom pad wells
