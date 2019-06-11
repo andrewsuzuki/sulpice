@@ -72,7 +72,7 @@
 (def thumbs-offset-y -22)
 ; height of thumb walls
 ; keyhole z position is calculated from this
-(def thumb-wall-height 15)
+(def thumbs-wall-height 15)
 
 (def port-from-bottom 5)
 
@@ -247,7 +247,7 @@
 ; Thumb Cluster ;
 ;;;;;;;;;;;;;;;;;
 
-(defn make-thumb-places [total radius step start]
+(defn make-thumbs-places [total radius step start]
     (map
         (fn [n]
             (let [rotate-angle (* n (deg2rad step))
@@ -258,40 +258,40 @@
                  [x (- y radius) 0]]))
         (range start (+ total start))))
 
-(def thumb-places
-    (make-thumb-places 5 50 25 -1))
+(def thumbs-places
+    (make-thumbs-places 5 50 25 -1))
 
-(defn make-thumb-connector-face [[r t] & flags]
+(defn make-thumbs-connector-face [[r t] & flags]
     (let [half-raw (/ keyhole-total-x 2)
           x-offset (if (contains? (set flags) :left)
                       half-raw
                       (-' half-raw))
           z-offset (/ keyhole-z 2)]
         (place (translate [x-offset 0 z-offset] (cube 0.0001 keyhole-total-y keyhole-z)) r t)))
-(def thumb-connectors
+(def thumbs-connectors
     (union
         (map (fn [[t1 t2]]
-                (let [f1 (make-thumb-connector-face t1 :right)
-                      f2 (make-thumb-connector-face t2 :left)]
+                (let [f1 (make-thumbs-connector-face t1 :right)
+                      f2 (make-thumbs-connector-face t2 :left)]
                     (hull f1 f2)))
-             (partition 2 1 thumb-places))))
+             (partition 2 1 thumbs-places))))
 
-(def thumb-keyholes
+(def thumbs-keyholes
     (union (map (fn [[r t]] (place keyhole r t))
-                thumb-places)))
+                thumbs-places)))
 
 (def thumbs-solid-projection
     (let [keyhole-solid (cube keyhole-total-x keyhole-total-y keyhole-z)
-          solid (union thumb-connectors
+          solid (union thumbs-connectors
                      (union (map (fn [[r t]] (place keyhole-solid r t))
-                                thumb-places)))]
+                                thumbs-places)))]
       (project solid)))
 
 (def thumbs-walls
     (->> thumbs-solid-projection
          (offset (-' wall-thickness))
          (difference thumbs-solid-projection)
-         (extrude-linear {:height thumb-wall-height})))
+         (extrude-linear {:height thumbs-wall-height})))
 
 (def thumbs-bottom
     (->> thumbs-solid-projection
@@ -303,12 +303,12 @@
            ; bottom
            (if include-bottom? (translate [0 0 (-' (/ bottom-height 2))] thumbs-bottom) nil)
            ; top
-           (translate [0 0 (- thumb-wall-height keyhole-z)]
+           (translate [0 0 (- thumbs-wall-height keyhole-z)]
                (union
-                   thumb-keyholes
-                   thumb-connectors))
+                   thumbs-keyholes
+                   thumbs-connectors))
            ; walls
-           (translate [0 0 (/ thumb-wall-height 2)] thumbs-walls))))
+           (translate [0 0 (/ thumbs-wall-height 2)] thumbs-walls))))
 
 ;;;;;;;;;;
 ; Bottom ;
@@ -322,7 +322,7 @@
 ; Cutouts ;
 ;;;;;;;;;;;
 
-(def thumb-port-cutout
+(def thumbs-port-cutout
     (->> (cylinder 3 15)
          (rotate [(/ pi 2) 0 0])
          (translate [0
@@ -331,7 +331,7 @@
 
 (def cutouts
     (union
-        thumb-port-cutout))
+        thumbs-port-cutout))
 
 ;;;;;;;;;;;;
 ; Finalize ;
