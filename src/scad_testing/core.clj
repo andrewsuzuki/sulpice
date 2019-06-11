@@ -8,11 +8,11 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 ; TODO
-; - ports
 ; - screwholes
 ; - more documentation
 ; - name
 ; - github
+; - [after first print] teensy / mcp holders
 
 ;;;;;;;;;;;;;;;;
 ;; Parameters ;;
@@ -411,16 +411,26 @@
                      (+ thumbs-offset-y (/ keyhole-total-y 2)) ; this is an estimate
                      port-z])))
 
+(def left-corner-y
+    (+ (* keyhole-total-y (- rows 0.5))
+       (get-in col-offsets [0 :y])
+       wall-thickness
+       (-' main-wall-squish)))
+
 (def trrs-port-cutout
-    (let [left-corner-y (+ (* keyhole-total-y (- rows 0.5))
-                           (get-in col-offsets [0 :y])
-                           wall-thickness
-                           (-' main-wall-squish))]
-        (->> (cylinder 2 wall-thickness)
-             (rotate [0 (/ pi 2) 0])
-             (translate [(- 0 (/ keyhole-total-x 2) (/ wall-thickness 2))
-                         (- left-corner-y trrs-port-offset)
-                         port-z]))))
+    (->> (cylinder 2 wall-thickness)
+         (rotate [0 (/ pi 2) 0])
+         (translate [(- 0 (/ keyhole-total-x 2) (/ wall-thickness 2))
+                     (- left-corner-y trrs-port-offset)
+                     port-z])))
+
+; usb mini-b port is 6.8 x 3mm
+; LEFT SIDE
+(def usb-port-cutout
+    (->> (cube 6.8 wall-thickness 3)
+         (translate [0
+                     (- left-corner-y (/ wall-thickness 2))
+                     port-z])))
 
 ; Collect individual cutouts
 
@@ -436,7 +446,8 @@
 
 ; cutouts for left side (relative to left mirror)
 (def left-cutouts
-    (union))
+    (union
+        usb-port-cutout))
 
 ;;;;;;;;;;;;
 ; Finalize ;
