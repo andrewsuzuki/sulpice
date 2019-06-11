@@ -30,6 +30,7 @@
 
 ; space between center of keyholes (x direction)
 (def keyhole-stagger-x 20)
+
 ; space between center of keyholes (y direction)
 (def keyhole-stagger-y 20)
 
@@ -51,11 +52,14 @@
 
 ; enclosure wall thickness
 (def wall-thickness 2)
+
 ; enclosure height
 (def wall-height 20)
+
 ; translate enclosure z
 ; also equal to the z midpoint of the main wall
 (def main-wall-translate-z -5)
+
 ; amount to squish walls into keyholes (y direction)
 ; (crudely compensates for gaps due to keyhole rotation)
 (def main-wall-squish 1)
@@ -67,6 +71,8 @@
 ; keyhole z position is calculated from this
 (def thumbs-wall-height 15)
 
+; distance from bottom (not including bottom plate)
+; to the centerpoint of exterior and interior ports
 (def port-from-bottom 5)
 
 ;;;;;;;;;;;;;;;;
@@ -77,9 +83,11 @@
 (def keyhole-bw
     (/ (- keyhole-stagger-x keyhole-x) 2))
 
+; (equivalent to keyhole-stagger-x)
 (def keyhole-total-x
     (+ keyhole-x (* keyhole-bw 2)))
 
+; (equivalent to keyhole-stagger-y)
 (def keyhole-total-y
     (+ keyhole-y (* keyhole-bw 2)))
 
@@ -105,11 +113,13 @@
 ;; Utils ;;
 ;;;;;;;;;;;
 
+; place a shape at a given rotation and translation (rotates first)
 (defn place [shape r t]
     (->> shape
          (rotate r)
          (translate t)))
 
+; mirror across the x plane
 (defn make-left [shape]
     (mirror [1 0 0] shape))
 
@@ -117,9 +127,12 @@
 ;; Keyhole Placement ;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
+; get rotation for keyhole given row index
 (defn get-place-rotation [row]
     (* rotate-fore-aft-step (- row home-row)))
 
+; given keyhole rotation from row index,
+; determine an appropriate z compensation
 (defn get-z-compensate [row]
     (->> (if (< row home-row)
              (range row (inc home-row))
@@ -132,9 +145,6 @@
                        (* (/ keyhole-total-y 2)))))
          (apply +)))
 
-; places describes the center of each keyhole
-; used to position the keyholes themselves,
-; as well as the connectors between keyholes
 (def places-by-col
     (map (fn [col]
              (let [col-offset-y (or (get-in col-offsets [col :y] 0))
@@ -148,9 +158,13 @@
                              (+ col-offset-z (get-z-compensate row))]])
                        (range 0 rows))))
          (range 0 cols)))
+
+; places describes the center of each keyhole
+; and any rotation to apply
 (def places
     (apply concat places-by-col))
 
+; a keyhole (thin perimeter + interior side nubs)
 (def keyhole
   (let [keyhole-bw-2x (* keyhole-bw 2)
         top-wall (->> (cube (+ keyhole-x keyhole-bw-2x) keyhole-bw keyhole-z)
@@ -174,14 +188,17 @@
                 (mirror [1 0 0])
                 (mirror [0 1 0])))))
 
-; a solid cube representing the space of a keyhole
-(def dummy-keyhole
-    (cube keyhole-total-x keyhole-total-y keyhole-z))
-
+; all primary keyholes in their places
 (def primary-keyholes
     (union (map (fn [[r t]] (place keyhole r t))
                 places)))
 
+; a solid cube representing the space of a keyhole
+; (used later for bottom plate generation)
+(def dummy-keyhole
+    (cube keyhole-total-x keyhole-total-y keyhole-z))
+
+; all dummy keyholes in their places (the same places as primary-keyholes)
 (def primary-dummy-keyholes
     (union (map (fn [[r t]] (place dummy-keyhole r t))
                 places)))
