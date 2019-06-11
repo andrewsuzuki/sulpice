@@ -14,7 +14,7 @@
 ; - DONE make rotation-z-compensate a sum of prev (up to home)
 ; - DONE remove degree units (all radians)
 ; - DONE main walls accoutnt for keyhole rotation (main-wall-squish)
-; - sides
+; - DONE sides
 ; - bottom
 ; - ports
 ; - screwholes
@@ -114,9 +114,9 @@
          (rotate r)
          (translate t)))
 
-;;;;;;;;;;;
-;; Model ;;
-;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Keyhole Placement ;;
+;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn get-place-rotation [row]
     (* rotate-fore-aft-step (- row home-row)))
@@ -245,9 +245,44 @@
                                 wall-height)))))
              (partition 2 1 places-by-col))))
 
+(def sidewall-y
+    (- (+ (* rows keyhole-total-y) (* wall-thickness 2)) (* main-wall-squish 2)))
+(def sidewall
+    (cube
+        wall-thickness
+        sidewall-y
+        wall-height))
+
+(def sidewall-left
+    (translate
+        [(- 0 (/ wall-thickness 2) (/ keyhole-total-x 2))
+         (-
+             (+ (/ sidewall-y 2)
+                (get-in col-offsets [0 :y]))
+             (/ keyhole-total-y 2)
+             main-wall-squish)
+         0]
+        sidewall))
+
+(def sidewall-right
+    (translate
+        [(+
+          (/ wall-thickness 2)
+          (- (* cols keyhole-total-x) (/ keyhole-total-x 2)))
+         (-
+           (+ (/ sidewall-y 2)
+              (get-in col-offsets [(dec cols) :y]))
+           (/ keyhole-total-y 2)
+           main-wall-squish)
+         0]
+        sidewall))
+
+; TODO rename
 (def enclosure-top
     (translate [0 0 main-wall-translate-z]
         (union
+            sidewall-left
+            sidewall-right
             wall-cols
             wall-connectors-north
             wall-connectors-south)))
