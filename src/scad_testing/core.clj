@@ -144,36 +144,6 @@
        wall-thickness
        keyhole-total-y))
 
-(def screw-places
-    (let [support-radius (/ screw-support-diameter 2)
-          kx-half (/ keyhole-total-x 2)
-          ky-half (/ keyhole-total-y 2)
-          first-col (first places-by-col)
-          last-col (last places-by-col)
-          ns-wall-effective (- wall-thickness main-wall-squish)
-          compensate (fn [coord & flags]
-                         (let [flagset (set flags)
-                               out? (contains? flagset :out)
-                               y? (contains? flagset :y)]
-                             (-> coord
-                                 (get (if y? 1 0))
-                                 ((if out? + -) kx-half (if y? ns-wall-effective wall-thickness))
-                                 ((if out? - +) support-radius))))
-          bottom-left-t (-> first-col (first) (get 1))
-          top-left-t (-> first-col (last) (get 1))
-          bottom-right-t (-> last-col (first) (get 1))
-          top-right-t (-> last-col (last) (get 1))
-          left-wall-x (compensate bottom-left-t :x :in)
-          right-wall-x (compensate bottom-right-t :x :out)]
-         ; bottom left
-        [[left-wall-x (compensate bottom-left-t :y :in)]
-         ; top left
-         [left-wall-x (compensate top-left-t :y :out)]
-         ; bottom right
-         [right-wall-x (compensate bottom-right-t :y :in)]
-         ; top right
-         [right-wall-x (compensate top-right-t :y :out)]]))
-
 ;;;;;;;;;;;
 ;; Utils ;;
 ;;;;;;;;;;;
@@ -393,6 +363,7 @@
         (range start (+ total start))))
 
 (def thumbs-places
+    ; TODO vars for this
     (make-thumbs-places 5 50 (/ pi 7) -1))
 
 (defn make-thumbs-connector-face [[r t] & flags]
@@ -461,6 +432,60 @@
          (project)
          (extrude-linear {:height bottom-height})
          (translate [0 0 (- base-z (/ bottom-height 2))])))
+
+;;;;;;;;;;;;;;;;;;;
+; Screw Placement ;
+;;;;;;;;;;;;;;;;;;;
+
+(def primary-screw-places
+    (let [support-radius (/ screw-support-diameter 2)
+          kx-half (/ keyhole-total-x 2)
+          ky-half (/ keyhole-total-y 2)
+          first-col (first places-by-col)
+          last-col (last places-by-col)
+          ns-wall-effective (- wall-thickness main-wall-squish)
+          compensate (fn [coord & flags]
+                         (let [flagset (set flags)
+                               out? (contains? flagset :out)
+                               y? (contains? flagset :y)]
+                             (-> coord
+                                 (get (if y? 1 0))
+                                 ((if out? + -) kx-half (if y? ns-wall-effective wall-thickness))
+                                 ((if out? - +) support-radius))))
+          bottom-left-t (-> first-col (first) (get 1))
+          top-left-t (-> first-col (last) (get 1))
+          bottom-right-t (-> last-col (first) (get 1))
+          top-right-t (-> last-col (last) (get 1))
+          left-wall-x (compensate bottom-left-t :x :in)
+          right-wall-x (compensate bottom-right-t :x :out)]
+         ; bottom left
+        [[left-wall-x (compensate bottom-left-t :y :in)]
+         ; top left
+         [left-wall-x (compensate top-left-t :y :out)]
+         ; bottom right
+         [right-wall-x (compensate bottom-right-t :y :in)]
+         ; top right
+         [right-wall-x (compensate top-right-t :y :out)]]))
+
+(def thumb-screw-places
+    ; TODO
+    [])
+
+(def screw-places
+    (concat primary-screw-places thumb-screw-places))
+
+(def screw-supports
+    (let [support (cylinder (/ screw-support-diameter 2)
+                            screw-support-height)]
+        (union
+            (map (fn [t]
+                     (translate [(first t)
+                                 (second t)
+                                 (+ base-z (/ screw-support-height 2))]
+                                support))
+                 screw-places))))
+
+; (screw cutouts are done below)
 
 ;;;;;;;;;;;
 ; Cutouts ;
@@ -531,21 +556,6 @@
 (def left-cutouts
     (union
         usb-port-cutout))
-
-;;;;;;;;;;;;;;;;;;;
-; Screw Placement ;
-;;;;;;;;;;;;;;;;;;;
-
-(def screw-supports
-    (let [support (cylinder (/ screw-support-diameter 2)
-                            screw-support-height)]
-        (union
-            (map (fn [t]
-                     (translate [(first t)
-                                 (second t)
-                                 (+ base-z (/ screw-support-height 2))]
-                                support))
-                 screw-places))))
 
 ;;;;;;;;;;;;
 ; Finalize ;
