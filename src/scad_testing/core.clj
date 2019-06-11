@@ -10,11 +10,12 @@
 ; TODOS
 ; - DONE remove old code
 ; - DONE new thumb enclosure
-; - remove main wall near thumb
+; - DONE thumb cluster port
 ; - more vars
 ; - sides
 ; - bottom
 ; - ports
+; - screwholes
 ; - make rotation-z-compensate a sum of prev (up to home)
 ; - position walls relative to TOP of keyholes (instead of center) -- i.e. account for rotation
 ; - more documentation
@@ -25,7 +26,7 @@
 ;; Parameters ;;
 ;;;;;;;;;;;;;;;;
 
-(def include-bottom?)
+(def include-bottom? false)
 
 (def rows 4)
 (def cols 6)
@@ -60,12 +61,20 @@
 (def wall-thickness 2)
 ; enclosure height
 (def wall-height 20)
-; translate enclosure
+; translate enclosure z
+; also equal to the z midpoint of the main wall
 (def main-wall-translate-z -5)
 
+; height of the bottom cover
+(def bottom-height 2)
+
+; y offset of thumb cluster
+(def thumbs-offset-y -22)
+; height of thumb walls
+; keyhole z position is calculated from this
 (def thumb-wall-height 15)
 
-(def bottom-height 2)
+(def port-from-bottom 5)
 
 ;;;;;;;;;;;;;;;;
 ;; Calculated ;;
@@ -87,6 +96,11 @@
                 (/ 2)
                 (-')
                 (+ main-wall-translate-z)))
+
+; the z coordinate of the center of all port cutouts
+; (exterior and for interior thumb cluster port)
+(def port-z
+    (+ base-z port-from-bottom))
 
 ;;;;;;;;;;;
 ;; Utils ;;
@@ -279,8 +293,6 @@
          (difference thumbs-solid-projection)
          (extrude-linear {:height thumb-wall-height})))
 
-(def thumbs-offset-y -20)
-
 (def thumbs-bottom
     (->> thumbs-solid-projection
          (extrude-linear {:height bottom-height})))
@@ -306,16 +318,33 @@
 (def primary-bottom
     nil)
 
+;;;;;;;;;;;
+; Cutouts ;
+;;;;;;;;;;;
+
+(def thumb-port-cutout
+    (->> (cylinder 3 15)
+         (rotate [(/ pi 2) 0 0])
+         (translate [0
+                     (+ thumbs-offset-y (/ keyhole-total-y 2)) ; this is an estimate
+                     port-z])))
+
+(def cutouts
+    (union
+        thumb-port-cutout))
+
 ;;;;;;;;;;;;
 ; Finalize ;
 ;;;;;;;;;;;;
 
 (def final
-    (union
-        enclosure-top
-        primary-keyholes
-        thumbs
-        primary-bottom))
+    (difference
+        (union
+            enclosure-top
+            primary-keyholes
+            thumbs
+            primary-bottom)
+        cutouts))
 
 (defn save [& body]
     (spit "things/right.scad" (apply write-scad body)))
