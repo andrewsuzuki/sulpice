@@ -75,6 +75,9 @@
 ; to the centerpoint of exterior and interior ports
 (def port-from-bottom 5)
 
+; y offset from rear of case to the trrs port
+(def trrs-port-offset 5)
+
 ;;;;;;;;;;;;;;;;
 ;; Calculated ;;
 ;;;;;;;;;;;;;;;;
@@ -408,37 +411,66 @@
                      (+ thumbs-offset-y (/ keyhole-total-y 2)) ; this is an estimate
                      port-z])))
 
-(def cutouts
-    (union
-        thumbs-port-cutout))
+(def trrs-port-cutout
+    (let [left-corner-y (+ (* keyhole-total-y (- rows 0.5))
+                           (get-in col-offsets [0 :y])
+                           wall-thickness
+                           (-' main-wall-squish))]
+        (->> (cylinder 2 wall-thickness)
+             (rotate [0 (/ pi 2) 0])
+             (translate [(- 0 (/ keyhole-total-x 2) (/ wall-thickness 2))
+                         (- left-corner-y trrs-port-offset)
+                         port-z]))))
 
-(defn apply-cutouts [shape]
-    (difference shape cutouts))
+; Collect individual cutouts
+
+; cutouts common to both sides (including bottoms)
+(def universal-cutouts
+    (union
+        thumbs-port-cutout
+        trrs-port-cutout))
+
+; cutouts for right side
+(def right-cutouts
+    (union))
+
+; cutouts for left side (relative to left mirror)
+(def left-cutouts
+    (union))
 
 ;;;;;;;;;;;;
 ; Finalize ;
 ;;;;;;;;;;;;
 
 (def bottom-right
-    (apply-cutouts
+    (difference
         (union
             primary-bottom
-            thumbs-bottom)))
+            thumbs-bottom)
+        universal-cutouts))
 
 (def bottom-left
     (make-left bottom-right))
 
-(def right
+(def final
     (union
-        (apply-cutouts
+        (difference
             (union
                 primary-enclosure
                 primary-keyholes
-                thumbs))
+                thumbs)
+            universal-cutouts)
         (if include-bottom? bottom nil)))
 
+(def right
+    (difference
+        final
+        right-cutouts))
+
 (def left
-    (make-left right))
+    (difference
+        (make-left final)
+        left-cutouts))
 
 (defn save [& body]
     (spit "things/right.scad" (apply write-scad right))
