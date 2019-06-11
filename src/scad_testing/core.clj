@@ -78,6 +78,20 @@
 ; keyhole z position is calculated from this
 (def thumbs-wall-height 15)
 
+; THUMBS
+
+; total number of thumb switches
+(def thumbs-total 5)
+
+; radius of constructed thumb switch circle
+(def thumbs-radius 50)
+
+; step between thumb switches (in radians)
+(def thumbs-step (/ pi 7))
+
+; where to start the thumb switches in steps (0 is 12 o'clock)
+(def thumbs-start -1)
+
 ; PORTS
 
 ; distance from bottom (not including bottom plate)
@@ -363,8 +377,11 @@
         (range start (+ total start))))
 
 (def thumbs-places
-    ; TODO vars for this
-    (make-thumbs-places 5 50 (/ pi 7) -1))
+    (make-thumbs-places
+        thumbs-total
+        thumbs-radius
+        thumbs-step
+        thumbs-start))
 
 (defn make-thumbs-connector-face [[r t] & flags]
     (let [half-raw (/ keyhole-total-x 2)
