@@ -13,7 +13,7 @@
 ; - DONE thumb cluster port
 ; - DONE make rotation-z-compensate a sum of prev (up to home)
 ; - DONE remove degree units (all radians)
-; - position walls relative to TOP of keyholes (instead of center) -- i.e. account for rotation
+; - DONE main walls accoutnt for keyhole rotation (main-wall-squish)
 ; - sides
 ; - bottom
 ; - ports
@@ -64,6 +64,9 @@
 ; translate enclosure z
 ; also equal to the z midpoint of the main wall
 (def main-wall-translate-z -5)
+; amount to squish walls into keyholes (y direction)
+; (crudely compensates for gaps due to keyhole rotation)
+(def main-wall-squish 1)
 
 ; height of the bottom cover
 (def bottom-height 2)
@@ -182,7 +185,7 @@
 
 (defn make-wall-col [t addsub]
      (translate [(get t 0)
-                 (addsub (get t 1) (/ keyhole-total-y 2) (/ wall-thickness 2))
+                 (addsub (get t 1) (/ keyhole-total-y 2) (/ wall-thickness 2) (-' main-wall-squish))
                  0]
         (cube keyhole-total-x wall-thickness wall-height)))
 
@@ -211,7 +214,7 @@
                                        (if (< y-l y-r)
                                          (+ (get t-l 0) m)
                                          (- (get t-r 0) m)))
-                                    (+ (/ keyhole-total-y 2) (get t-short 1) (/ length 2))
+                                    (+ (/ keyhole-total-y 2) (get t-short 1) (/ length 2) (-' main-wall-squish))
                                     0]
                             (cube
                                 wall-thickness
@@ -234,7 +237,7 @@
                                        (if (< y-l y-r)
                                          (- (get t-r 0) m)
                                          (+ (get t-l 0) m)))
-                                    (- (get t-short 1) (/ keyhole-total-y 2) (/ length 2))
+                                    (- (get t-short 1) (/ keyhole-total-y 2) (/ length 2) (-' main-wall-squish))
                                     0]
                             (cube
                                 wall-thickness
