@@ -10,7 +10,6 @@
 ;;;;;;;;;;;;;;;;;;
 
 ; TODO
-; - bottom pad wells
 ; - more documentation
 ; - [after first print] teensy / mcp holders
 
@@ -71,7 +70,7 @@
 (def primary-wall-squish 1)
 
 ; height of the bottom cover
-(def bottom-height 2)
+(def bottom-height 3)
 
 ; THUMBS
 
@@ -122,6 +121,16 @@
 
 ; screw support cylinder height (surrounds screw insert)
 (def screw-support-height (+ screw-insert-height 2))
+
+; FRICTION PADS
+
+; friction pad cutout dimensions
+(def friction-cutout-x 7)
+(def friction-cutout-y 7)
+; z is inset into the bottom plate,
+; the actual height of the pad
+; will likely be higher
+(def friction-cutout-z 1)
 
 ;;;;;;;;;;;;;;;;
 ;; Calculated ;;
@@ -528,7 +537,28 @@
                                 support))
                  screw-places))))
 
-; (screw cutouts are done below)
+; (screw cutouts are done below in Cutouts section)
+
+;;;;;;;;;;;;;;;;;
+; Friction Pads ;
+;;;;;;;;;;;;;;;;;
+
+(def friction-places
+    (map
+        (fn [[r t]] [[0 0 (get r 2)]
+                     [(get t 0)
+                      (get t 1)
+                      (+ base-z
+                         (-' bottom-height)
+                         (/ friction-cutout-z 2))]])
+        [(-> places-by-col (first) (first))
+         (-> places-by-col (first) (last))
+         (-> places-by-col (last) (first))
+         (-> places-by-col (last) (last))
+         (-> thumbs-places (first) (update-in [1 1] (partial + thumbs-offset-y)))
+         (-> thumbs-places (last) (update-in [1 1] (partial + thumbs-offset-y)))]))
+
+; (friction pad cutouts are done below in Cutouts section)
 
 ;;;;;;;;;;;
 ; Cutouts ;
@@ -582,6 +612,18 @@
                             screw-cutout-shape))
              screw-places)))
 
+(def friction-cutout-shape
+    (cube
+        friction-cutout-x
+        friction-cutout-y
+        friction-cutout-z))
+
+(def friction-cutouts
+    (union
+        (map (fn [[r t]]
+                 (place friction-cutout-shape r t))
+             friction-places)))
+
 ; Collect individual cutouts
 
 ; cutouts common to both sides (including bottoms)
@@ -589,7 +631,8 @@
     (union
         thumbs-port-cutout
         trrs-port-cutout
-        screw-cutouts))
+        screw-cutouts
+        friction-cutouts))
 
 ; cutouts for right side
 (def right-cutouts
