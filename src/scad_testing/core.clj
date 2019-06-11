@@ -12,6 +12,7 @@
 ; - DONE new thumb enclosure
 ; - DONE thumb cluster port
 ; - DONE make rotation-z-compensate a sum of prev (up to home)
+; - DONE remove degree units (all radians)
 ; - position walls relative to TOP of keyholes (instead of center) -- i.e. account for rotation
 ; - sides
 ; - bottom
@@ -41,7 +42,7 @@
 (def keyhole-stagger-y 20)
 
 ; fore-aft rotation step
-(def rotate-fore-aft-step 4)
+(def rotate-fore-aft-step (/ pi 45))
 
 ; home row index (from bottom=0)
 ; the home row is flat --
@@ -105,9 +106,6 @@
 ;; Utils ;;
 ;;;;;;;;;;;
 
-(defn deg2rad [degrees]
-    (/ (* degrees pi) 180))
-
 (defn place [shape r t]
     (->> shape
          (rotate r)
@@ -118,7 +116,7 @@
 ;;;;;;;;;;;
 
 (defn get-place-rotation [row]
-    (deg2rad (* rotate-fore-aft-step (- row home-row))))
+    (* rotate-fore-aft-step (- row home-row)))
 
 (defn get-z-compensate [row]
     (->> (if (< row home-row)
@@ -244,7 +242,6 @@
                                 wall-height)))))
              (partition 2 1 places-by-col))))
 
-; TODO subtract thumb cluster walls
 (def enclosure-top
     (translate [0 0 main-wall-translate-z]
         (union
@@ -259,7 +256,7 @@
 (defn make-thumbs-places [total radius step start]
     (map
         (fn [n]
-            (let [rotate-angle (* n (deg2rad step))
+            (let [rotate-angle (* n step)
                   unit-angle (+ (/ pi 2) rotate-angle) ; move to second quadrant for x/y calculation
                   x (* radius (Math/cos unit-angle))
                   y (* radius (Math/sin unit-angle))]
@@ -268,7 +265,7 @@
         (range start (+ total start))))
 
 (def thumbs-places
-    (make-thumbs-places 5 50 25 -1))
+    (make-thumbs-places 5 50 (/ pi 7) -1))
 
 (defn make-thumbs-connector-face [[r t] & flags]
     (let [half-raw (/ keyhole-total-x 2)
