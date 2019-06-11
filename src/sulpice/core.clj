@@ -157,6 +157,13 @@
        wall-thickness
        keyhole-total-y))
 
+; length of primary enclosure sidewall (y direction)
+(def sidewall-y
+    (-> rows
+        (* keyhole-total-y)
+        (+ (* wall-thickness 2))
+        (- (* primary-wall-squish 2))))
+
 ;;;;;;;;;;;
 ;; Utils ;;
 ;;;;;;;;;;;
@@ -317,8 +324,6 @@
                                 wall-height)))))
              (partition 2 1 places-by-col))))
 
-(def sidewall-y
-    (- (+ (* rows keyhole-total-y) (* wall-thickness 2)) (* primary-wall-squish 2)))
 (def sidewall
     (cube
         wall-thickness
