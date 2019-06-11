@@ -629,7 +629,7 @@
         (make-left final)
         left-cutouts))
 
-(defn save [& body]
+(defn save []
     (spit "things/right.scad" (apply write-scad right))
     (spit "things/left.scad" (apply write-scad left))
     (spit "things/bottom-right.scad" (apply write-scad bottom-right))
@@ -638,7 +638,5 @@
 (defn -main
     "Save keyboard as scad"
     [& args]
-    (save final)
-    (println "done"))
-
-(-main)
+    (save)
+    (println "Generated scad files"))
