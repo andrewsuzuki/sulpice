@@ -2,7 +2,7 @@
 
 Another parameterized ergonomic keyboard in Clojure/OpenSCAD.
 
-![sulpice keyboard model](resources/screenshot.png)
+![sulpice keyboard model](resources/screenshot.png?)
 
 Resembles the pipe organ console at Saint Sulpice in Paris:
 
