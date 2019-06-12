@@ -10,4 +10,4 @@ Resembles the pipe organ console at Saint Sulpice in Paris:
 
 First print (WIP):
 
-![sulpice first 3d print](resources/first-draft.jpg)
+![sulpice first 3d print](resources/first-print.jpg)
