@@ -9,7 +9,9 @@
 ;; Andrew Suzuki ;
 ;;;;;;;;;;;;;;;;;;
 
+; TODO
 ; - [after first print] teensy / mcp holders
+; - [after first print] trrs / usb breakout board holders
 
 ;;;;;;;;;;;;;;;;
 ;; Parameters ;;
