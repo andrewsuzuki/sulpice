@@ -9,8 +9,6 @@
 ;; Andrew Suzuki ;
 ;;;;;;;;;;;;;;;;;;
 
-; TODO
-; - more documentation
 ; - [after first print] teensy / mcp holders
 
 ;;;;;;;;;;;;;;;;
@@ -19,7 +17,7 @@
 
 ; include bottom in right.scad/left.scad exports
 ; (use for preview, not printing)
-(def include-bottom? true)
+(def include-bottom? false)
 
 ; KEYHOLE PLACEMENT
 
@@ -217,6 +215,7 @@
                        (* (/ keyhole-total-y 2)))))
          (apply +)))
 
+; places (rotation and translation) for each keyhole, grouped by column
 (def places-by-col
     (map (fn [col]
              (let [col-offset-y (or (get-in col-offsets [col :y] 0))
@@ -279,12 +278,14 @@
 ; Enclosure ;
 ;;;;;;;;;;;;;
 
+; create wall segment at the end (top or bottom) of a column
 (defn make-wall-col [t addsub]
      (translate [(get t 0)
                  (addsub (get t 1) (/ keyhole-total-y 2) (/ wall-thickness 2) (-' primary-wall-squish))
                  0]
         (cube keyhole-total-x wall-thickness wall-height)))
 
+; create all wall segments at ends of columns
 (def wall-cols
     (union
         (map (fn [col]
@@ -295,6 +296,9 @@
                          (make-wall-col t-s -))))
              places-by-col)))
 
+; wall connectors on northern end of primary enclosure
+; wall connectors connect the wall-cols and are
+; positioned between two columns along the longer column
 (def wall-connectors-north
     (union
         (map (fn [[l-places r-places]]
@@ -318,6 +322,7 @@
                                 wall-height)))))
              (partition 2 1 places-by-col))))
 
+; wall connectors on southern end of primary enclosure
 (def wall-connectors-south
     (union
         (map (fn [[l-places r-places]]
@@ -341,12 +346,14 @@
                                 wall-height)))))
              (partition 2 1 places-by-col))))
 
-(def sidewall
+; raw sidewall shape (to be positioned)
+(def sidewall-shape
     (cube
         wall-thickness
         sidewall-y
         wall-height))
 
+; left sidewall
 (def sidewall-left
     (translate
         [(- 0 (/ wall-thickness 2) (/ keyhole-total-x 2))
@@ -357,8 +364,9 @@
              (/ keyhole-total-y 2)
              wall-thickness)
          0]
-        sidewall))
+        sidewall-shape))
 
+; right sidewall
 (def sidewall-right
     (translate
         [(+
@@ -371,8 +379,10 @@
            (/ keyhole-total-y 2)
            wall-thickness)
          0]
-        sidewall))
+        sidewall-shape))
 
+; all the walls of the primary enclosure in position
+; (wall-cols, wall-connectors, sidewalls)
 (def primary-enclosure
     (translate [0 0 primary-wall-translate-z]
         (union
@@ -386,6 +396,9 @@
 ; Thumb Cluster ;
 ;;;;;;;;;;;;;;;;;
 
+; locate the thumb keyholes
+; place them along the arc of a circle with
+; a specified radius separated by a step
 (defn make-thumbs-places [total radius step start]
     (map
         (fn [n]
@@ -397,6 +410,7 @@
                  [x (- y radius) 0]]))
         (range start (+ total start))))
 
+; place thumbs (see above) according to parameters
 (def thumbs-places
     (make-thumbs-places
         thumbs-total
@@ -404,6 +418,8 @@
         thumbs-step
         thumbs-start))
 
+; represents the thin face on the left/right side of a thumb keyhole
+; used to hull together with the opposite side to connect the thumbholes below
 (defn make-thumbs-connector-face [[r t] & flags]
     (let [half-raw (/ keyhole-total-x 2)
           x-offset (if (contains? (set flags) :left)
@@ -412,6 +428,7 @@
           z-offset (/ keyhole-z 2)]
         (place (translate [x-offset 0 z-offset] (cube 0.0001 keyhole-total-y keyhole-z)) r t)))
 
+; hull together opposing thumb connector faces between thumb keyholes
 (def thumbs-connectors
     (union
         (map (fn [[t1 t2]]
@@ -420,23 +437,27 @@
                     (hull f1 f2)))
              (partition 2 1 thumbs-places))))
 
+; place keyholes at thumb places
 (def thumbs-keyholes
     (union (map (fn [[r t]] (place keyhole r t))
                 thumbs-places)))
 
+; project thumb cluster with dummy keyholes for a solid (hole-less) 2d projection
 (def thumbs-solid-projection
-    (let [keyhole-solid (cube keyhole-total-x keyhole-total-y keyhole-z)
-          solid (union thumbs-connectors
-                     (union (map (fn [[r t]] (place keyhole-solid r t))
-                                thumbs-places)))]
+    (let [solid (union thumbs-connectors
+                     (union (map (fn [[r t]] (place dummy-keyhole r t))
+                                 thumbs-places)))]
       (project solid)))
 
+; offset the projection to form a 2d perimeter, then
+; extrude it to form the walls of the thumb cluster
 (def thumbs-walls
     (->> thumbs-solid-projection
          (offset (-' wall-thickness))
          (difference thumbs-solid-projection)
          (extrude-linear {:height thumbs-wall-height})))
 
+; extrude the projection to form the bottom
 (def thumbs-bottom
     (->> thumbs-solid-projection
          (extrude-linear {:height bottom-height})
@@ -444,6 +465,7 @@
                      thumbs-offset-y
                      (- base-z (/ bottom-height 2))])))
 
+; union the thumb cluster together and position it (excluding the bottom)
 (def thumbs
     (translate [0 thumbs-offset-y base-z]
        (union
@@ -459,11 +481,8 @@
 ; Bottom ;
 ;;;;;;;;;;
 
-(def primary-solid
-    (union
-        primary-enclosure
-        primary-dummy-keyholes))
-
+; project a dummy enclosure (with solid keyholes)
+; then extrude up to form the bottom
 (def primary-bottom
     (->> (union
              primary-enclosure
@@ -476,6 +495,8 @@
 ; Screw Placement ;
 ;;;;;;;;;;;;;;;;;;;
 
+; position four screws in the primary enclosure
+; (one at each corner)
 (def primary-screw-places
     (let [support-radius (/ screw-support-diameter 2)
           kx-half (/ keyhole-total-x 2)
@@ -506,6 +527,8 @@
          ; top right
          [right-wall-x (compensate top-right-t :y :out)]]))
 
+; position two screws at the far ends of the thumb cluster
+; a bit of trig to account for z rotation; can probably be cleaned up
 (def thumbs-screw-places
     (let [t-right (first thumbs-places)
           t-left (last thumbs-places)
@@ -531,9 +554,12 @@
                     (+ (get t-left-t 1) thumbs-offset-y))]]
         [right left]))
 
+; all screw places (primary enclosure and thumb cluster)
 (def screw-places
     (concat primary-screw-places thumbs-screw-places))
 
+; generate solid supports within the enclosure
+; as reinforcement for the eventual screw cutouts
 (def screw-supports
     (let [support (cylinder (/ screw-support-diameter 2)
                             screw-support-height)]
@@ -551,6 +577,8 @@
 ; Friction Pads ;
 ;;;;;;;;;;;;;;;;;
 
+; locations of friction pads -- at the center of the four
+; primary corner keyholes and at ends of thumb cluster (next to screws)
 (def friction-places
     (map
         (fn [[r t]] [[0 0 (get r 2)]
@@ -572,6 +600,8 @@
 ; Cutouts ;
 ;;;;;;;;;;;
 
+; cut out a cylinder between primary enclosure and
+; thumb cluster for cable routing
 (def thumbs-port-cutout
     (->> (cylinder 3 15)
          (rotate [(/ pi 2) 0 0])
@@ -579,6 +609,7 @@
                      (+ thumbs-offset-y (/ keyhole-total-y 2)) ; this is an estimate
                      port-z])))
 
+; cylinder cutout on sides (both left and right keyboards) for trrs jack
 (def trrs-port-cutout
     (->> (cylinder 2 wall-thickness)
          (rotate [0 (/ pi 2) 0])
@@ -586,16 +617,23 @@
                      (- left-corner-y trrs-port-offset)
                      port-z])))
 
-; usb mini-b port is 6.8 x 3mm
-; LEFT SIDE
+; usb port cutout (LEFT SIDE)
+; (though it's not translated off the x axis currently,
+; so the side doesn't matter)
+; usb mini-b ports are 6.8mm x 3mm
 (def usb-port-cutout
     (->> (cube 6.8 wall-thickness 3)
          (translate [0
                      (- left-corner-y (/ wall-thickness 2))
                      port-z])))
 
+; form the shape of the screw cutouts:
+; - self-tapping insert
+; - hole for screw
+; - cone for screw head
+; NOTE origin is located between insert and base hole;
+; i.e. it should be translated to base-z (between enclosure and bottom)
 (def screw-cutout-shape
-    ; NOTE origin is located between insert and base hole
     (union
         ; insert
         (translate [0 0 (/ screw-insert-height 2)]
@@ -607,6 +645,7 @@
         (translate [0 0 (- (/ screw-cone-height 2) bottom-height)]
                    (cylinder [(/ screw-cone-diameter 2) (/ screw-diameter 2)] screw-cone-height))))
 
+; position screw cutouts
 (def screw-cutouts
     (union
         (map (fn [t]
@@ -614,12 +653,14 @@
                             screw-cutout-shape))
              screw-places)))
 
+; friction pad cutout shape
 (def friction-cutout-shape
     (cube
         friction-cutout-x
         friction-cutout-y
         friction-cutout-z))
 
+; position friction pad cutouts
 (def friction-cutouts
     (union
         (map (fn [[r t]]
@@ -659,6 +700,7 @@
 (def bottom-left
     (make-left bottom-right))
 
+; everything common to both sides
 (def final
     (union
         (difference
