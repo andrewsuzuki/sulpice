@@ -12,6 +12,7 @@
 ; TODO
 ; - [after first print] teensy / mcp holders
 ; - [after first print] trrs / usb breakout board holders
+; with-fn for port cylinders
 
 ;;;;;;;;;;;;;;;;
 ;; Parameters ;;
@@ -30,6 +31,9 @@
 (def keyhole-y 14.4) ;; Was 14.1, then 14.25
 (def keyhole-x 14.4)
 (def keyhole-z 4)
+(def keyhole-nub-width 2.75)
+(def keyhole-nub-height keyhole-z)
+(def keyhole-sheath-height 5.5)
 
 ; space between center of keyholes (x direction)
 (def keyhole-stagger-x 20)
@@ -38,7 +42,7 @@
 (def keyhole-stagger-y 20)
 
 ; fore-aft rotation step
-(def rotate-fore-aft-step (/ pi 45))
+(def rotate-fore-aft-step (/ pi 25))
 
 ; home row index (from bottom=0)
 ; the home row is flat --
@@ -48,8 +52,8 @@
 ; optional y and z offsets for each column (zero-indexed)
 (def col-offsets {0 {:y 0 :z -1} ; h col (index)
                   1 {:y 2 :z -1} ; j col (index)
-                  2 {:y 8 :z -3} ; k col (middle)
-                  3 {:y 6 :z -2} ; l col (ring)
+                  2 {:y 13 :z -5} ; k col (middle)
+                  3 {:y 9 :z -4} ; l col (ring)
                   4 {:y -5 :z 0} ; semi col (pinky)
                   5 {:y -5 :z 0}}) ; extra2 col (pinky)
 
@@ -59,7 +63,7 @@
 (def wall-thickness 2)
 
 ; enclosure height
-(def wall-height 20)
+(def wall-height 25)
 
 ; translate enclosure z
 ; also equal to the z midpoint of the primary wall
@@ -76,7 +80,7 @@
 
 ; height of thumb walls
 ; keyhole z position is calculated from this
-(def thumbs-wall-height 15)
+(def thumbs-wall-height 23)
 
 ; total number of thumb switches
 (def thumbs-total 5)
@@ -240,6 +244,7 @@
 ; a keyhole (thin perimeter + interior side nubs)
 (def keyhole
   (let [keyhole-bw-2x (* keyhole-bw 2)
+        ; walls
         top-wall (->> (cube (+ keyhole-x keyhole-bw-2x) keyhole-bw keyhole-z)
                       (translate [0
                                   (+ (/ keyhole-bw 2) (/ keyhole-y 2))
@@ -248,14 +253,23 @@
                        (translate [(+ (/ keyhole-bw 2) (/ keyhole-x 2))
                                    0
                                    (/ keyhole-z 2)]))
-        side-nub (->> (binding [*fn* 30] (cylinder 1 2.75))
+
+        ; sheath
+        right-sheath (->> (cube 1 (+ keyhole-y keyhole-bw-2x) keyhole-sheath-height)
+                       (translate [(+ keyhole-bw (/ keyhole-x 2) (/ -1 2))
+                                   0
+                                   (- (/ keyhole-z 2) (/ keyhole-sheath-height 2))]))
+
+        ; nub
+        side-nub (->> (binding [*fn* 30] (cylinder 1 keyhole-nub-width))
                       (rotate (/ pi 2) [1 0 0])
                       (translate [(+ (/ keyhole-x 2)) 0 1])
-                      (hull (->> (cube keyhole-bw 2.75 keyhole-z)
+                      (hull (->> (cube keyhole-bw keyhole-nub-width keyhole-nub-height)
                                  (translate [(+ (/ keyhole-bw 2) (/ keyhole-x 2))
                                              0
-                                             (/ keyhole-z 2)]))))
-        plate-half (union top-wall left-wall (with-fn 100 side-nub))]
+                                             (/ keyhole-nub-height 2)])))
+                      (translate [0 0 (- keyhole-z keyhole-nub-height)]))
+        plate-half (union top-wall left-wall right-sheath (with-fn 100 side-nub))]
     (union plate-half
            (->> plate-half
                 (mirror [1 0 0])
