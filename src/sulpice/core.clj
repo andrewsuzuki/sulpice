@@ -12,7 +12,6 @@
 ; TODO
 ; - [after first print] teensy / mcp holders
 ; - [after first print] trrs / usb breakout board holders
-; with-fn for port cylinders
 
 ;;;;;;;;;;;;;;;;
 ;; Parameters ;;
@@ -136,6 +135,12 @@
 ; will likely be higher
 (def friction-cutout-z 1)
 
+; MISC
+
+; number of facets on arcs (openscad "$fn")
+; see https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Other_Language_Features#$fa,_$fs_and_$fn
+(def cylinder-facet-number 50)
+
 ;;;;;;;;;;;;;;;;
 ;; Calculated ;;
 ;;;;;;;;;;;;;;;;
@@ -199,6 +204,12 @@
 (defn make-left [shape]
     (mirror [1 0 0] shape))
 
+; cylinder with configured fn (facet number)
+(defn cylinder-fn [& args]
+    (->> args
+         (apply cylinder)
+         (with-fn cylinder-facet-number)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Keyhole Placement ;;
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -261,7 +272,7 @@
                                    (- (/ keyhole-z 2) (/ keyhole-sheath-height 2))]))
 
         ; nub
-        side-nub (->> (binding [*fn* 30] (cylinder 1 keyhole-nub-width))
+        side-nub (->> (cylinder-fn 1 keyhole-nub-width)
                       (rotate (/ pi 2) [1 0 0])
                       (translate [(+ (/ keyhole-x 2)) 0 1])
                       (hull (->> (cube keyhole-bw keyhole-nub-width keyhole-nub-height)
@@ -269,7 +280,7 @@
                                              0
                                              (/ keyhole-nub-height 2)])))
                       (translate [0 0 (- keyhole-z keyhole-nub-height)]))
-        plate-half (union top-wall left-wall right-sheath (with-fn 100 side-nub))]
+        plate-half (union top-wall left-wall right-sheath side-nub)]
     (union plate-half
            (->> plate-half
                 (mirror [1 0 0])
@@ -577,8 +588,8 @@
 ; generate solid supports within the enclosure
 ; as reinforcement for the eventual screw cutouts
 (def screw-supports
-    (let [support (cylinder (/ screw-support-diameter 2)
-                            screw-support-height)]
+    (let [support (cylinder-fn (/ screw-support-diameter 2)
+                               screw-support-height)]
         (union
             (map (fn [t]
                      (translate [(first t)
@@ -619,7 +630,7 @@
 ; cut out a cylinder between primary enclosure and
 ; thumb cluster for cable routing
 (def thumbs-port-cutout
-    (->> (cylinder 3 15)
+    (->> (cylinder-fn 3 15)
          (rotate [(/ pi 2) 0 0])
          (translate [0
                      (+ thumbs-offset-y (/ keyhole-total-y 2)) ; this is an estimate
@@ -627,7 +638,7 @@
 
 ; cylinder cutout on sides (both left and right keyboards) for trrs jack
 (def trrs-port-cutout
-    (->> (cylinder 2 wall-thickness)
+    (->> (cylinder-fn 2 wall-thickness)
          (rotate [0 (/ pi 2) 0])
          (translate [(- 0 (/ keyhole-total-x 2) (/ wall-thickness 2))
                      (- left-corner-y trrs-port-offset)
@@ -653,13 +664,13 @@
     (union
         ; insert
         (translate [0 0 (/ screw-insert-height 2)]
-                   (cylinder (/ screw-insert-diameter 2) screw-insert-height))
+                   (cylinder-fn (/ screw-insert-diameter 2) screw-insert-height))
         ; base hole
         (translate [0 0 (-' (/ bottom-height 2))]
-                   (cylinder (/ screw-diameter 2) bottom-height))
+                   (cylinder-fn (/ screw-diameter 2) bottom-height))
         ; base conical head
         (translate [0 0 (- (/ screw-cone-height 2) bottom-height)]
-                   (cylinder [(/ screw-cone-diameter 2) (/ screw-diameter 2)] screw-cone-height))))
+                   (cylinder-fn [(/ screw-cone-diameter 2) (/ screw-diameter 2)] screw-cone-height))))
 
 ; position screw cutouts
 (def screw-cutouts
