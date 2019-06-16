@@ -23,7 +23,7 @@
 
 ; KEYHOLE PLACEMENT
 
-(def rows 4)
+(def rows 3)
 (def cols 6)
 
 ; keyhole dimensions
@@ -32,7 +32,6 @@
 (def keyhole-z 4)
 (def keyhole-nub-width 2.75)
 (def keyhole-nub-height keyhole-z)
-(def keyhole-sheath-height 5.5)
 
 ; space between center of keyholes (x direction)
 (def keyhole-stagger-x 20)
@@ -56,13 +55,22 @@
                   4 {:y -5 :z 0} ; semi col (pinky)
                   5 {:y -5 :z 0}}) ; extra2 col (pinky)
 
+; configure placement/config of sheaths
+; sheaths are thin skirts around primary keyholes
+; that can cover any gaps (primarily due to
+; column z-offsets or rotation between the columns
+(def sheaths
+    [{:col 1 :row 1 :height 4 :sides [:right]}
+     {:col 1 :row 2 :height 4 :sides [:right]}
+     {:col 4 :row 2 :height 4 :sides [:left]}])
+
 ; ENCLOSURE / WALL
 
 ; enclosure wall thickness
 (def wall-thickness 2)
 
 ; enclosure height
-(def wall-height 25)
+(def wall-height 20)
 
 ; translate enclosure z
 ; also equal to the z midpoint of the primary wall
@@ -79,7 +87,7 @@
 
 ; height of thumb walls
 ; keyhole z position is calculated from this
-(def thumbs-wall-height 23)
+(def thumbs-wall-height 18)
 
 ; total number of thumb switches
 (def thumbs-total 5)
@@ -264,13 +272,6 @@
                        (translate [(+ (/ keyhole-bw 2) (/ keyhole-x 2))
                                    0
                                    (/ keyhole-z 2)]))
-
-        ; sheath
-        right-sheath (->> (cube 1 (+ keyhole-y keyhole-bw-2x) keyhole-sheath-height)
-                       (translate [(+ keyhole-bw (/ keyhole-x 2) (/ -1 2))
-                                   0
-                                   (- (/ keyhole-z 2) (/ keyhole-sheath-height 2))]))
-
         ; nub
         side-nub (->> (cylinder-fn 1 keyhole-nub-width)
                       (rotate (/ pi 2) [1 0 0])
@@ -280,7 +281,7 @@
                                              0
                                              (/ keyhole-nub-height 2)])))
                       (translate [0 0 (- keyhole-z keyhole-nub-height)]))
-        plate-half (union top-wall left-wall right-sheath side-nub)]
+        plate-half (union top-wall left-wall side-nub)]
     (union plate-half
            (->> plate-half
                 (mirror [1 0 0])
@@ -300,6 +301,26 @@
 (def primary-dummy-keyholes
     (union (map (fn [[r t]] (place dummy-keyhole r t))
                 places)))
+
+; make sheath (without final translation/rotation) from config map
+; example: (make-sheath {:height 6 :sides [:right]})
+; sides can be :left and/or :right
+(defn make-sheath [{:keys [height sides]}]
+    (let [wall (->> (cube 1 (+ keyhole-y (* keyhole-bw 2)) height)
+                    (translate [0 0 (- (/ keyhole-z 2) (/ height 2))]))
+          trans-x (+ keyhole-bw (/ keyhole-x 2) (/ -1 2))]
+        (union
+            (if (some #{:right} sides) (translate [trans-x 0 0] wall) nil)
+            (if (some #{:left} sides) (translate [(-' trans-x) 0 0] wall) nil))))
+
+; make and place all configured sheaths
+(def primary-sheaths
+    (union
+        (map (fn [{:keys [row col] :as sconf}]
+                (let [sheath (make-sheath sconf)
+                      keyplace (-> places-by-col (nth col) (nth row))]
+                    (if keyplace (apply (partial place sheath) keyplace) nil)))
+             sheaths)))
 
 ;;;;;;;;;;;;;
 ; Enclosure ;
@@ -734,6 +755,7 @@
             (union
                 primary-enclosure
                 primary-keyholes
+                primary-sheaths
                 thumbs
                 screw-supports)
             universal-cutouts)
