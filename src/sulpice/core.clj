@@ -10,8 +10,8 @@
 ;;;;;;;;;;;;;;;;;;
 
 ; TODO
-; - [after first print] teensy / mcp holders
-; - [after first print] trrs / usb breakout board holders
+; - usb breakout board platform
+; - increase friction pad side (and offset farther from edge)
 
 ;;;;;;;;;;;;;;;;
 ;; Parameters ;;
@@ -50,8 +50,8 @@
 ; optional y and z offsets for each column (zero-indexed)
 (def col-offsets {0 {:y 0 :z -1} ; h col (index)
                   1 {:y 2 :z -1} ; j col (index)
-                  2 {:y 13 :z -5} ; k col (middle)
-                  3 {:y 9 :z -4} ; l col (ring)
+                  2 {:y 12 :z -5} ; k col (middle)
+                  3 {:y 8 :z -4} ; l col (ring)
                   4 {:y -5 :z 0} ; semi col (pinky)
                   5 {:y -5 :z 0}}) ; extra2 col (pinky)
 
@@ -108,7 +108,26 @@
 (def port-from-bottom 5)
 
 ; y offset from rear of case to the trrs port
-(def trrs-port-offset 10)
+(def trrs-port-offset 11)
+
+; trrs port diameter
+(def trrs-port-diameter 4)
+
+; TRRS BREAKOUT BOARD MOUNT
+
+; dimensions of the board itself
+(def trrs-board-x 13) ; TODO test + verify
+(def trrs-board-y 18) ; TODO test + verify
+(def trrs-board-z 1.5) ; TODO test + verify
+; height of the board platform
+(def trrs-board-platform-z 1)
+; cut some y off the trrs board platform for the holes
+; (positions the platform as if it were there)
+(def trrs-board-y-cutoff 3)
+; y offset to center of jack (from southern end of board)
+(def trrs-board-jack-offset-y 14)
+; z offset to center of jack (from top of board)
+(def trrs-board-jack-offset-z 2)
 
 ; SCREWS
 
@@ -197,6 +216,12 @@
        (get-in col-offsets [0 :y])
        wall-thickness
        (-' primary-wall-squish)))
+
+; coordinates of the trrs port
+; (used for both the cutout and board placement)
+(def trrs-port-coord [(- 0 (/ keyhole-total-x 2) (/ wall-thickness 2))
+                      (- left-corner-y trrs-port-offset)
+                      port-z])
 
 ;;;;;;;;;;;
 ;; Utils ;;
@@ -301,6 +326,10 @@
 (def primary-dummy-keyholes
     (union (map (fn [[r t]] (place dummy-keyhole r t))
                 places)))
+
+;;;;;;;;;;;
+; Sheaths ;
+;;;;;;;;;;;
 
 ; make sheath (without final translation/rotation) from config map
 ; example: (make-sheath {:height 6 :sides [:right]})
@@ -439,6 +468,64 @@
             wall-cols
             wall-connectors-north
             wall-connectors-south)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; TRRS Breakout Board Mount ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; trrs board platform and clips (centered at origin)
+(def trrs-board-shape
+    (let [clip-width 3
+          clip-upper-z 1
+          clip-upper-extension 0.5
+          clip-lower-y 1
+          clip-overall-z (+ trrs-board-platform-z trrs-board-z clip-upper-z)
+          clip (translate
+                [0 0 (- (/ clip-overall-z 2) (/ trrs-board-platform-z 2))]
+                (union
+                    (cube
+                        clip-width
+                        clip-lower-y
+                        clip-overall-z)
+                    (translate
+                        [0
+                         (/ clip-upper-extension 2)
+                         (- (/ clip-overall-z 2) (/ clip-upper-z 2))]
+                        (cube
+                            clip-width
+                            (+ clip-lower-y clip-upper-extension)
+                            clip-upper-z))))]
+        (union
+            ; platform
+            (translate [0 (/ trrs-board-y-cutoff 2) 0]
+                (cube
+                    trrs-board-x
+                    (- trrs-board-y trrs-board-y-cutoff)
+                    trrs-board-platform-z))
+            ; north clip
+            (->> clip
+                 (translate [0 (- 0 (/ trrs-board-y 2) (/ clip-lower-y 2)) 0])
+                 (rotate [0 0 pi]))
+            ; west clip
+            (->> clip
+                 (rotate [0 0 (/ pi 2)])
+                 (translate [(+ (/ trrs-board-x 2) (/ clip-lower-y 2)) 0 0])))))
+
+; place trrs board
+(def trrs-board
+    (translate
+        (let [[x y z] trrs-port-coord]
+            [(+ x
+                (/ trrs-board-x 2)
+                (/ wall-thickness 2))
+             (+ y
+                (/ trrs-board-y 2)
+                (-' trrs-board-jack-offset-y))
+             (- z
+                (/ trrs-board-platform-z 2)
+                (/ trrs-port-diameter 2)
+                trrs-board-jack-offset-z)])
+        trrs-board-shape))
 
 ;;;;;;;;;;;;;;;;;
 ; Thumb Cluster ;
@@ -659,11 +746,9 @@
 
 ; cylinder cutout on sides (both left and right keyboards) for trrs jack
 (def trrs-port-cutout
-    (->> (cylinder-fn 2 wall-thickness)
+    (->> (cylinder-fn (/ trrs-port-diameter 2) wall-thickness)
          (rotate [0 (/ pi 2) 0])
-         (translate [(- 0 (/ keyhole-total-x 2) (/ wall-thickness 2))
-                     (- left-corner-y trrs-port-offset)
-                     port-z])))
+         (translate trrs-port-coord)))
 
 ; usb port cutout (LEFT SIDE)
 ; (though it's not translated off the x axis currently,
@@ -757,7 +842,8 @@
                 primary-keyholes
                 primary-sheaths
                 thumbs
-                screw-supports)
+                screw-supports
+                trrs-board)
             universal-cutouts)
         (if include-bottom? bottom-right nil)))
 
