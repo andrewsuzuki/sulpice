@@ -17,7 +17,6 @@
 ;   - rotate 180 deg (z axis)
 ;   - move west clip to east
 ; - usb breakout board platform
-; - increase friction pad side (and offset farther from edge)
 
 ;;;;;;;;;;;;;;;;
 ;; Parameters ;;
@@ -25,7 +24,7 @@
 
 ; include bottom in right.scad/left.scad exports
 ; (use for preview, not printing)
-(def include-bottom? false)
+(def include-bottom? true)
 
 ; KEYHOLE PLACEMENT
 
@@ -162,12 +161,18 @@
 ; FRICTION PADS
 
 ; friction pad cutout dimensions
-(def friction-cutout-x 7)
-(def friction-cutout-y 7)
+(def friction-cutout-x 13)
+(def friction-cutout-y 13)
 ; z is inset into the bottom plate,
 ; the actual height of the pad
 ; will likely be higher
 (def friction-cutout-z 1)
+; friction pad offset inwards (y direction, before rotation)
+; from the center of the left and rightmost keyholes in the thumb cluster
+(def friction-cutout-thumbs-offset 3)
+; friction pad offset inwards (x and y directions) from the
+; center of the left and rightmost keyholes in the thumb cluster
+(def friction-cutout-primary-offset 1)
 
 ; MISC
 
@@ -729,22 +734,40 @@
 ; Friction Pads ;
 ;;;;;;;;;;;;;;;;;
 
+(defn add-places [a b]
+    (let [arx (get-in a [0 0])
+          ary (get-in a [0 1])
+          arz (get-in a [0 2])
+          brx (get-in b [0 0])
+          bry (get-in b [0 1])
+          brz (get-in b [0 2])
+          atx (get-in a [1 0])
+          aty (get-in a [1 1])
+          atz (get-in a [1 2])
+          btx (get-in b [1 0])
+          bty (get-in b [1 1])
+          btz (get-in b [1 2])]
+        [[(+ arx brx) (+ ary bry) (+ arz brz)]
+         [(+ atx btx) (+ aty bty) (+ atz btz)]]))
+
 ; locations of friction pads -- at the center of the four
 ; primary corner keyholes and at ends of thumb cluster (next to screws)
 (def friction-places
     (map
-        (fn [[r t]] [[0 0 (get r 2)]
-                     [(get t 0)
-                      (get t 1)
-                      (+ base-z
-                         (-' bottom-height)
-                         (/ friction-cutout-z 2))]])
-        [(-> places-by-col (first) (first))
-         (-> places-by-col (first) (last))
-         (-> places-by-col (last) (first))
-         (-> places-by-col (last) (last))
-         (-> thumbs-places (first) (update-in [1 1] (partial + thumbs-offset-y)))
-         (-> thumbs-places (last) (update-in [1 1] (partial + thumbs-offset-y)))]))
+        (fn [[r t type]]
+            [[0 0 (get r 2)]
+             [(get t 0)
+              (get t 1)
+              (+ base-z
+                 (-' bottom-height)
+                 (/ friction-cutout-z 2))]
+             type])
+        [(-> places-by-col (first) (first) (conj :primary-sw))
+         (-> places-by-col (first) (last) (conj :primary-nw))
+         (-> places-by-col (last) (first) (conj :primary-se))
+         (-> places-by-col (last) (last) (conj :primary-ne))
+         (-> thumbs-places (first) (update-in [1 1] (partial + thumbs-offset-y)) (conj :thumb-right))
+         (-> thumbs-places (last) (update-in [1 1] (partial + thumbs-offset-y)) (conj :thumb-left))]))
 
 ; (friction pad cutouts are done below in Cutouts section)
 
@@ -813,9 +836,22 @@
 ; position friction pad cutouts
 (def friction-cutouts
     (union
-        (map (fn [[r t]]
-                 (place friction-cutout-shape r t))
-             friction-places)))
+        (map
+            (fn [[r t type]]
+                (let [ot friction-cutout-thumbs-offset
+                      -ot (-' ot)
+                      op friction-cutout-primary-offset
+                      -op (-' op)]
+                 (-> type
+                     (case :thumb-left (translate [ot 0 0] friction-cutout-shape)
+                           :thumb-right (translate [-ot 0 0] friction-cutout-shape)
+                           :primary-sw (translate [op op 0] friction-cutout-shape)
+                           :primary-nw (translate [op -op 0] friction-cutout-shape)
+                           :primary-se (translate [-op op 0] friction-cutout-shape)
+                           :primary-ne (translate [-op -op 0] friction-cutout-shape)
+                           friction-cutout-shape)
+                     (place r t))))
+            friction-places)))
 
 ; Collect individual cutouts
 
