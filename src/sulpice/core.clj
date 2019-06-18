@@ -55,8 +55,8 @@
 ; optional y and z offsets for each column (zero-indexed)
 (def col-offsets [{:y 0 :z -1} ; h col (index reach)
                   {:y 2 :z -1} ; j col (index)
-                  {:y 12 :z -5} ; k col (middle)
-                  {:y 8 :z -4} ; l col (ring)
+                  {:y 11 :z -4} ; k col (middle)
+                  {:y 7 :z -3} ; l col (ring)
                   {:y -5 :z 0} ; semi col (pinky)
                   {:y -5 :z 0}]) ; extra2 col (pinky reach)
 
