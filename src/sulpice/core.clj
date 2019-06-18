@@ -10,6 +10,12 @@
 ;;;;;;;;;;;;;;;;;;
 
 ; TODO
+; - correctly mirror trrs board for left side
+;   - more generic board clip fn (also use for usb breakout board)
+;     - takes platform height, board x/y/z, rotation, side
+;   - increase port offset (for symmetry)
+;   - rotate 180 deg (z axis)
+;   - move west clip to east
 ; - usb breakout board platform
 ; - increase friction pad side (and offset farther from edge)
 
@@ -27,8 +33,8 @@
 (def cols 6)
 
 ; keyhole dimensions
-(def keyhole-y 14.4) ;; Was 14.1, then 14.25
-(def keyhole-x 14.4)
+(def keyhole-y 14.25)
+(def keyhole-x 14.25)
 (def keyhole-z 4)
 (def keyhole-nub-width 2.75)
 (def keyhole-nub-height keyhole-z)
@@ -105,7 +111,7 @@
 
 ; distance from bottom (not including bottom plate)
 ; to the centerpoint of exterior and interior ports
-(def port-from-bottom 5)
+(def port-from-bottom 7)
 
 ; y offset from rear of case to the trrs port
 (def trrs-port-offset 11)
@@ -120,7 +126,7 @@
 (def trrs-board-y 18) ; TODO test + verify
 (def trrs-board-z 1.5) ; TODO test + verify
 ; height of the board platform
-(def trrs-board-platform-z 1)
+(def trrs-board-platform-z 3)
 ; cut some y off the trrs board platform for the holes
 ; (positions the platform as if it were there)
 (def trrs-board-y-cutoff 3)
@@ -132,7 +138,8 @@
 ; SCREWS
 
 ; self-tapping m3 insert outside diameter
-(def screw-insert-diameter 4.6) ; TODO test + verify
+; actual insert is 4.8mm, but need to account for facets
+(def screw-insert-diameter 5.2)
 
 ; self-tapping m3 insert height
 (def screw-insert-height 6)
@@ -167,6 +174,10 @@
 ; number of facets on arcs (openscad "$fn")
 ; see https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Other_Language_Features#$fa,_$fs_and_$fn
 (def cylinder-facet-number 50)
+
+; !!!!!!!!!!!!!!!!!!!!
+; !! END PARAMETERS !!
+; !!!!!!!!!!!!!!!!!!!!
 
 ;;;;;;;;;;;;;;;;
 ;; Calculated ;;
@@ -477,7 +488,7 @@
 (def trrs-board-shape
     (let [clip-width 3
           clip-upper-z 1
-          clip-upper-extension 0.5
+          clip-upper-extension 0.7
           clip-lower-y 1
           clip-overall-z (+ trrs-board-platform-z trrs-board-z clip-upper-z)
           clip (translate
