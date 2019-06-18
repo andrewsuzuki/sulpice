@@ -54,12 +54,12 @@
 (def home-row 1)
 
 ; optional y and z offsets for each column (zero-indexed)
-(def col-offsets {0 {:y 0 :z -1} ; h col (index)
-                  1 {:y 2 :z -1} ; j col (index)
-                  2 {:y 12 :z -5} ; k col (middle)
-                  3 {:y 8 :z -4} ; l col (ring)
-                  4 {:y -5 :z 0} ; semi col (pinky)
-                  5 {:y -5 :z 0}}) ; extra2 col (pinky)
+(def col-offsets [{:y 0 :z -1} ; h col (index reach)
+                  {:y 2 :z -1} ; j col (index)
+                  {:y 12 :z -5} ; k col (middle)
+                  {:y 8 :z -4} ; l col (ring)
+                  {:y -5 :z 0} ; semi col (pinky)
+                  {:y -5 :z 0}]) ; extra2 col (pinky reach)
 
 ; configure placement/config of sheaths
 ; sheaths are thin skirts around primary keyholes
@@ -179,6 +179,32 @@
 ; !! END PARAMETERS !!
 ; !!!!!!!!!!!!!!!!!!!!
 
+;;;;;;;;;;;
+;; Utils ;;
+;;;;;;;;;;;
+
+; place a shape at a given rotation and translation (rotates first)
+(defn place [shape r t]
+    (->> shape
+         (rotate r)
+         (translate t)))
+
+; mirror across the x plane
+(defn make-left [shape]
+    (mirror [1 0 0] shape))
+
+; cylinder with configured fn (facet number)
+(defn cylinder-fn [& args]
+    (->> args
+         (apply cylinder)
+         (with-fn cylinder-facet-number)))
+
+; get col offset, using default if not specified,
+; and optionally the specific offset coordinate (:y or :z)
+(defn get-col-offset [col coord]
+    (let [fc (get col-offsets col {:y 0 :z 0})]
+        (if coord (get fc coord) fc)))
+
 ;;;;;;;;;;;;;;;;
 ;; Calculated ;;
 ;;;;;;;;;;;;;;;;
@@ -224,7 +250,7 @@
 ; (used for port positioning)
 (def left-corner-y
     (+ (* keyhole-total-y (- rows 0.5))
-       (get-in col-offsets [0 :y])
+       (get-col-offset 0 :y)
        wall-thickness
        (-' primary-wall-squish)))
 
@@ -233,26 +259,6 @@
 (def trrs-port-coord [(- 0 (/ keyhole-total-x 2) (/ wall-thickness 2))
                       (- left-corner-y trrs-port-offset)
                       port-z])
-
-;;;;;;;;;;;
-;; Utils ;;
-;;;;;;;;;;;
-
-; place a shape at a given rotation and translation (rotates first)
-(defn place [shape r t]
-    (->> shape
-         (rotate r)
-         (translate t)))
-
-; mirror across the x plane
-(defn make-left [shape]
-    (mirror [1 0 0] shape))
-
-; cylinder with configured fn (facet number)
-(defn cylinder-fn [& args]
-    (->> args
-         (apply cylinder)
-         (with-fn cylinder-facet-number)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Keyhole Placement ;;
@@ -279,8 +285,8 @@
 ; places (rotation and translation) for each keyhole, grouped by column
 (def places-by-col
     (map (fn [col]
-             (let [col-offset-y (or (get-in col-offsets [col :y] 0))
-                   col-offset-z (or (get-in col-offsets [col :z] 0))]
+             (let [col-offset-y (get-col-offset col :y)
+                   col-offset-z (get-col-offset col :z)]
                   (map (fn [row]
                            [; rotate
                             [(get-place-rotation row) 0 0]
@@ -447,7 +453,7 @@
         [(- 0 (/ wall-thickness 2) (/ keyhole-total-x 2))
          (-
              (+ (/ sidewall-y 2)
-                (get-in col-offsets [0 :y])
+                (get-col-offset 0 :y)
                 primary-wall-squish)
              (/ keyhole-total-y 2)
              wall-thickness)
@@ -462,7 +468,7 @@
           (- (* cols keyhole-total-x) (/ keyhole-total-x 2)))
          (-
            (+ (/ sidewall-y 2)
-              (get-in col-offsets [(dec cols) :y])
+              (get-col-offset (dec cols) :y)
               primary-wall-squish)
            (/ keyhole-total-y 2)
            wall-thickness)
