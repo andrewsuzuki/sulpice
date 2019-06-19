@@ -283,13 +283,6 @@
                       (- left-corner-y trrs-port-offset)
                       port-z])
 
-; coordinates of the usb port (left keyboard)
-(def usb-port-coord
-    (let [[_ [nwx nwy nwz]] (-> places-by-col (last) (last))
-          tx (+ (-' nwx) (/ keyhole-total-x 2)) ; last two cols are flush, so place it in the middle
-          ty (+ nwy (/ keyhole-total-y 2) (/ wall-thickness 2) (-' primary-wall-squish))]
-        [tx ty port-z]))
-
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Keyhole Placement ;;
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -516,9 +509,9 @@
             wall-connectors-north
             wall-connectors-south)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Interal Board Mounts (TRRS, USB) ;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Internal Board Mounts (TRRS, USB) ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; create a breakout board mount (for trrs or usb) that
 ; consists of a platform and clips on the specified size
@@ -614,6 +607,13 @@
             :platform-height trrs-board-platform-height
             :clip-sides [:bottom :left])
          (translate trrs-board-translate-left)))
+
+; coordinates of the usb port (left keyboard)
+(def usb-port-coord
+    (let [[_ [nwx nwy nwz]] (-> places-by-col (last) (last))
+          tx (+ (-' nwx) (/ keyhole-total-x 2)) ; last two cols are flush, so place it in the middle
+          ty (+ nwy (/ keyhole-total-y 2) (/ wall-thickness 2) (-' primary-wall-squish))]
+        [tx ty port-z]))
 
 ; usb board
 (def usb-board-left
