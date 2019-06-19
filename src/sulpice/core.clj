@@ -23,10 +23,18 @@
 (def cols 6)
 
 ; keyhole dimensions
+; for gateron (mx-compatible) switches, 14.25 is a tight fit
+; with a resounding snap when installing. removal is a little hard.
+; use 14.4 if you're prototyping; the switches are much easier to install,
+; and the slight play isn't noticeable when typing, however, they might
+; pull out when removing keycaps.
+; if you use alps switches, you're on your own!
 (def keyhole-y 14.25)
 (def keyhole-x 14.25)
 (def keyhole-z 4)
-(def keyhole-nub-width 2.75)
+; nub dimensions
+(def keyhole-nub-width 2.75) ; width
+(def keyhole-nub-prominence 1) ; how much it sticks out (at the bottom)
 (def keyhole-nub-height keyhole-z)
 
 ; space between center of keyholes (x direction)
@@ -350,7 +358,7 @@
                                    0
                                    (/ keyhole-z 2)]))
         ; nub
-        side-nub (->> (cylinder-fn 1 keyhole-nub-width)
+        side-nub (->> (cylinder-fn keyhole-nub-prominence keyhole-nub-width)
                       (rotate (/ pi 2) [1 0 0])
                       (translate [(+ (/ keyhole-x 2)) 0 1])
                       (hull (->> (cube keyhole-bw keyhole-nub-width keyhole-nub-height)
@@ -1014,3 +1022,7 @@
   (make-parents "things/dummy.txt") ; make things dir
   (save)
   (println "Generated scad files"))
+
+; for eval
+(comment
+  (-main))
