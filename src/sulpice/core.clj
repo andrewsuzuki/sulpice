@@ -10,12 +10,6 @@
 ;;;;;;;;;;;;;;;;;;
 
 ; TODO
-; - correctly mirror trrs board for left side
-;   - more generic board clip fn (also use for usb breakout board)
-;     - takes platform height, board x/y/z, rotation, side
-;   - increase port offset (for symmetry)
-;   - rotate 180 deg (z axis)
-;   - move west clip to east
 ; - usb breakout board platform
 
 ;;;;;;;;;;;;;;;;
@@ -24,7 +18,7 @@
 
 ; include bottom in right.scad/left.scad exports
 ; (use for preview, not printing)
-(def include-bottom? true)
+(def include-bottom? false)
 
 ; KEYHOLE PLACEMENT
 
@@ -110,10 +104,10 @@
 
 ; distance from bottom (not including bottom plate)
 ; to the centerpoint of exterior and interior ports
-(def port-from-bottom 7)
+(def port-from-bottom 6)
 
 ; y offset from rear of case to the trrs port
-(def trrs-port-offset 11)
+(def trrs-port-offset 22)
 
 ; trrs port diameter
 (def trrs-port-diameter 4)
@@ -125,11 +119,12 @@
 (def trrs-board-y 18) ; TODO test + verify
 (def trrs-board-z 1.5) ; TODO test + verify
 ; height of the board platform
-(def trrs-board-platform-z 3)
+(def trrs-board-platform-z 2)
 ; cut some y off the trrs board platform for the holes
 ; (positions the platform as if it were there)
 (def trrs-board-y-cutoff 3)
-; y offset to center of jack (from southern end of board)
+; y offset to center of jack
+; (from southern end of board on right keyboard)
 (def trrs-board-jack-offset-y 14)
 ; z offset to center of jack (from top of board)
 (def trrs-board-jack-offset-z 2)
@@ -495,59 +490,100 @@
 ; TRRS Breakout Board Mount ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; trrs board platform and clips (centered at origin)
-(def trrs-board-shape
-    (let [clip-width 3
-          clip-upper-z 1
-          clip-upper-extension 0.7
-          clip-lower-y 1
-          clip-overall-z (+ trrs-board-platform-z trrs-board-z clip-upper-z)
-          clip (translate
-                [0 0 (- (/ clip-overall-z 2) (/ trrs-board-platform-z 2))]
-                (union
-                    (cube
-                        clip-width
-                        clip-lower-y
-                        clip-overall-z)
+; create a breakout board mount (for trrs or usb) that
+; consists of a platform and clips on the specified size
+(defn make-board-mount [x y z & {:keys [platform-height cutoff-x cutoff-y
+                                        clip-width clip-upper-height
+                                        clip-upper-runout clip-lower-girth clip-sides]
+                                 :or {platform-height 2
+                                      cutoff-x 0 ; can be + or - to take off left or right
+                                      cutoff-y 0 ; can be + or - to take off bottom or top
+                                      clip-width 3
+                                      clip-upper-height 1
+                                      clip-upper-runout 0.7
+                                      clip-lower-girth 1
+                                      clip-sides [:top :right]}}]
+    (let [clip-overall-height (+ platform-height z clip-upper-height)
+          clip-tower-shape (cube clip-width clip-lower-girth clip-overall-height)
+          clip-upper-shape (->> (cube clip-width
+                                      (+ clip-lower-girth clip-upper-runout)
+                                      clip-upper-height)
+                                (translate [0
+                                            (/ clip-upper-runout 2)
+                                            (- (/ clip-overall-height 2)
+                                               (/ clip-upper-height 2))]))
+          clip (->> (union clip-tower-shape clip-upper-shape)
                     (translate
-                        [0
-                         (/ clip-upper-extension 2)
-                         (- (/ clip-overall-z 2) (/ clip-upper-z 2))]
-                        (cube
-                            clip-width
-                            (+ clip-lower-y clip-upper-extension)
-                            clip-upper-z))))]
-        (union
-            ; platform
-            (translate [0 (/ trrs-board-y-cutoff 2) 0]
-                (cube
-                    trrs-board-x
-                    (- trrs-board-y trrs-board-y-cutoff)
-                    trrs-board-platform-z))
-            ; north clip
-            (->> clip
-                 (translate [0 (- 0 (/ trrs-board-y 2) (/ clip-lower-y 2)) 0])
-                 (rotate [0 0 pi]))
-            ; west clip
-            (->> clip
-                 (rotate [0 0 (/ pi 2)])
-                 (translate [(+ (/ trrs-board-x 2) (/ clip-lower-y 2)) 0 0])))))
+                        [0 0 (- (/ clip-overall-height 2) (/ platform-height 2))]))
+          clip-bottom (->> clip
+                           (translate [0 (- 0 (/ y 2) (/ clip-lower-girth 2)) 0]))
+          clip-top (->> clip-bottom
+                        (rotate [0 0 pi]))
+          clip-left (->> clip
+                         (translate [0 (- 0 (/ x 2) (/ clip-lower-girth 2)) 0])
+                         (rotate [0 0 (/ pi 2)]))
+          clip-right (->> clip-left
+                          (rotate [0 0 pi]))
+          clips (->> clip-sides
+                     (map (fn [side]
+                              (case side
+                                :bottom clip-bottom
+                                :top clip-top
+                                :right clip-left
+                                :left clip-right)))
+                     (union))
+          platform (->> (cube
+                          (- x (Math/abs cutoff-x))
+                          (- y (Math/abs cutoff-y))
+                          platform-height)
+                        (translate [(/ cutoff-x 2) (/ cutoff-y 2) 0]))]
+        (union platform clips)))
 
-; place trrs board
-(def trrs-board
-    (translate
-        (let [[x y z] trrs-port-coord]
-            [(+ x
-                (/ trrs-board-x 2)
-                (/ wall-thickness 2))
-             (+ y
-                (/ trrs-board-y 2)
-                (-' trrs-board-jack-offset-y))
-             (- z
-                (/ trrs-board-platform-z 2)
-                (/ trrs-port-diameter 2)
-                trrs-board-jack-offset-z)])
-        trrs-board-shape))
+; create board mount for trrs breakout board (right keyboard)
+(def trrs-board-translate-right
+    (let [[x y z] trrs-port-coord]
+        [(+ x
+            (/ trrs-board-x 2)
+            (/ wall-thickness 2))
+         (+ y
+            (/ trrs-board-y 2)
+            (-' trrs-board-jack-offset-y))
+         (- z
+            (/ trrs-board-platform-z 2)
+            (/ trrs-port-diameter 2)
+            trrs-board-jack-offset-z)]))
+
+; create board mount for trrs breakout board (left keyboard)
+(def trrs-board-translate-left
+    (let [[x y z] trrs-port-coord
+          left-y (- y
+                    (/ trrs-board-y 2)
+                    (-' trrs-board-jack-offset-y))]
+        (-> trrs-board-translate-right
+            (update 0 -') ; flip x
+            (assoc 1 left-y)))) ; set new y
+
+; place trrs board (right keyboard)
+(def trrs-board-right
+    (->> (make-board-mount
+            trrs-board-x
+            trrs-board-y
+            trrs-board-z
+            :cutoff-y trrs-board-y-cutoff
+            :platform-height trrs-board-platform-z ; TODO REMOVE TRRS PARAM?
+            :clip-sides [:top :right])
+         (translate trrs-board-translate-right)))
+
+; place trrs board (left keyboard)
+(def trrs-board-left
+    (->> (make-board-mount
+            trrs-board-x
+            trrs-board-y
+            trrs-board-z
+            :cutoff-y (-' trrs-board-y-cutoff)
+            :platform-height trrs-board-platform-z ; TODO REMOVE TRRS PARAM?
+            :clip-sides [:bottom :left])
+         (translate trrs-board-translate-left)))
 
 ;;;;;;;;;;;;;;;;;
 ; Thumb Cluster ;
@@ -895,20 +931,20 @@
                 primary-keyholes
                 primary-sheaths
                 thumbs
-                screw-supports
-                trrs-board)
+                screw-supports)
             universal-cutouts)
         (if include-bottom? bottom-right nil)))
 
 (def right
-    (difference
-        final
-        right-cutouts))
+    (-> final
+        (union trrs-board-right)
+        (difference right-cutouts)))
 
 (def left
-    (difference
-        (make-left final)
-        left-cutouts))
+    (-> final
+        (make-left)
+        (union trrs-board-left)
+        (difference left-cutouts)))
 
 (defn save []
     (spit "things/right.scad" (apply write-scad right))
