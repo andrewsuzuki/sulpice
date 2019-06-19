@@ -95,7 +95,7 @@
 ; step between thumb switches (in radians)
 (def thumbs-step (/ pi 7))
 
-; where to start the thumb switches in steps (0 is 12 o'clock)
+; where to start the thumb switches in integer steps (0 is 12 o'clock)
 (def thumbs-start -1)
 
 ; PORTS
@@ -194,6 +194,9 @@
 
 ; Run some checks on supplied parameters
 
+(assert (= cols (count col-offsets))
+        "# cols offsets must match # cols")
+
 (assert (= (-> col-offsets
                (last)
                :y)
@@ -201,6 +204,15 @@
                (get (- (count col-offsets) 2))
                :y))
         "last two columns must have same :y offset (check col-offsets)")
+
+(assert (and (> home-row 0) (< home-row rows))
+        "home row is not in range of rows")
+
+(assert (> screw-support-diameter screw-insert-diameter)
+        "screw support diameter must be larger than insert diameter")
+
+(assert (>= cylinder-facet-number 10)
+        "cylinder facet number should be >= 10")
 
 ;;;;;;;;;;;
 ;; Utils ;;
