@@ -4,13 +4,10 @@
               [scad-clj.model :refer :all]
               [clojure.java.io :refer [make-parents]]))
 
-;;;;;;;;;;;;;;;;;;
-;; Sulpice       ;
-;; Andrew Suzuki ;
-;;;;;;;;;;;;;;;;;;
-
-; TODO
-; - usb breakout board platform
+;;;;;;;;;;;;;;;;;;;;;
+;; Sulpice Keyboard ;
+;; Andrew Suzuki    ;
+;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;
 ;; Parameters ;;
@@ -46,7 +43,8 @@
 ; the other rows curve away from it
 (def home-row 1)
 
-; optional y and z offsets for each column (zero-indexed)
+; y and z offsets for each column (zero-indexed)
+; penultimate column :y must == last column :y
 (def col-offsets [{:y 0 :z -1} ; h col (index reach)
                   {:y 2 :z -1} ; j col (index)
                   {:y 11 :z -4} ; k col (middle)
@@ -112,22 +110,37 @@
 ; trrs port diameter
 (def trrs-port-diameter 4)
 
+; usb port dimensions
+(def usb-port-width 6.8)
+(def usb-port-height 3)
+
 ; TRRS BREAKOUT BOARD MOUNT
 
-; dimensions of the board itself
-(def trrs-board-x 13) ; TODO test + verify
-(def trrs-board-y 18) ; TODO test + verify
-(def trrs-board-z 1.5) ; TODO test + verify
-; height of the board platform
-(def trrs-board-platform-z 2)
+; dimensions of the trrs board
+(def trrs-board-x 13)
+(def trrs-board-y 18)
+(def trrs-board-z 1.5)
+; height of the trrs board platform
+(def trrs-board-platform-height 2)
 ; cut some y off the trrs board platform for the holes
 ; (positions the platform as if it were there)
 (def trrs-board-y-cutoff 3)
 ; y offset to center of jack
 ; (from southern end of board on right keyboard)
 (def trrs-board-jack-offset-y 14)
-; z offset to center of jack (from top of board)
+; z offset to bottom of jack (from top of board)
 (def trrs-board-jack-offset-z 2)
+
+; USB BREAKOUT BOARD MOUNT
+
+; dimensions of the usb board
+(def usb-board-x 25)
+(def usb-board-y 19)
+(def usb-board-z 1.5)
+; height of the usb board platform
+(def usb-board-platform-height 2)
+; z offset to bottom of jack (from top of board)
+(def usb-board-jack-offset-z 0.5)
 
 ; SCREWS
 
@@ -178,6 +191,16 @@
 ; !!!!!!!!!!!!!!!!!!!!
 ; !! END PARAMETERS !!
 ; !!!!!!!!!!!!!!!!!!!!
+
+; Run some checks on supplied parameters
+
+(assert (= (-> col-offsets
+               (last)
+               :y)
+           (-> col-offsets
+               (get (- (count col-offsets) 2))
+               :y))
+        "last two columns must have same :y offset (check col-offsets)")
 
 ;;;;;;;;;;;
 ;; Utils ;;
@@ -259,6 +282,13 @@
 (def trrs-port-coord [(- 0 (/ keyhole-total-x 2) (/ wall-thickness 2))
                       (- left-corner-y trrs-port-offset)
                       port-z])
+
+; coordinates of the usb port (left keyboard)
+(def usb-port-coord
+    (let [[_ [nwx nwy nwz]] (-> places-by-col (last) (last))
+          tx (+ (-' nwx) (/ keyhole-total-x 2)) ; last two cols are flush, so place it in the middle
+          ty (+ nwy (/ keyhole-total-y 2) (/ wall-thickness 2) (-' primary-wall-squish))]
+        [tx ty port-z]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Keyhole Placement ;;
@@ -486,9 +516,9 @@
             wall-connectors-north
             wall-connectors-south)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; TRRS Breakout Board Mount ;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Interal Board Mounts (TRRS, USB) ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; create a breakout board mount (for trrs or usb) that
 ; consists of a platform and clips on the specified size
@@ -549,7 +579,7 @@
             (/ trrs-board-y 2)
             (-' trrs-board-jack-offset-y))
          (- z
-            (/ trrs-board-platform-z 2)
+            (/ trrs-board-platform-height 2)
             (/ trrs-port-diameter 2)
             trrs-board-jack-offset-z)]))
 
@@ -570,7 +600,7 @@
             trrs-board-y
             trrs-board-z
             :cutoff-y trrs-board-y-cutoff
-            :platform-height trrs-board-platform-z ; TODO REMOVE TRRS PARAM?
+            :platform-height trrs-board-platform-height
             :clip-sides [:top :right])
          (translate trrs-board-translate-right)))
 
@@ -581,9 +611,28 @@
             trrs-board-y
             trrs-board-z
             :cutoff-y (-' trrs-board-y-cutoff)
-            :platform-height trrs-board-platform-z ; TODO REMOVE TRRS PARAM?
+            :platform-height trrs-board-platform-height
             :clip-sides [:bottom :left])
          (translate trrs-board-translate-left)))
+
+; usb board
+(def usb-board-left
+    (->> (make-board-mount
+            usb-board-x
+            usb-board-y
+            usb-board-z
+            :platform-height usb-board-platform-height
+            :clip-sides [:bottom :left :right])
+         (translate
+            (let [[x y z] usb-port-coord]
+                [x
+                 (- y
+                    (/ wall-thickness 2)
+                    (/ usb-board-y 2))
+                 (- z
+                    (/ usb-board-platform-height 2)
+                    (/ usb-port-height 2)
+                    usb-board-jack-offset-z)]))))
 
 ;;;;;;;;;;;;;;;;;
 ; Thumb Cluster ;
@@ -817,7 +866,7 @@
     (->> (cylinder-fn 3 15)
          (rotate [(/ pi 2) 0 0])
          (translate [0
-                     (+ thumbs-offset-y (/ keyhole-total-y 2)) ; this is an estimate
+                     (+ thumbs-offset-y (/ keyhole-total-y 2)) ; this is an estimate (cylinder is long)
                      port-z])))
 
 ; cylinder cutout on sides (both left and right keyboards) for trrs jack
@@ -827,14 +876,9 @@
          (translate trrs-port-coord)))
 
 ; usb port cutout (LEFT SIDE)
-; (though it's not translated off the x axis currently,
-; so the side doesn't matter)
-; usb mini-b ports are 6.8mm x 3mm
 (def usb-port-cutout
-    (->> (cube 6.8 wall-thickness 3)
-         (translate [0
-                     (- left-corner-y (/ wall-thickness 2))
-                     port-z])))
+    (->> (cube usb-port-width wall-thickness usb-port-height)
+         (translate usb-port-coord)))
 
 ; form the shape of the screw cutouts:
 ; - self-tapping insert
@@ -943,7 +987,7 @@
 (def left
     (-> final
         (make-left)
-        (union trrs-board-left)
+        (union trrs-board-left usb-board-left)
         (difference left-cutouts)))
 
 (defn save []
@@ -955,6 +999,6 @@
 (defn -main
     "Save keyboard as scad"
     [& args]
-    (make-parents "things/dummy.txt")
+    (make-parents "things/dummy.txt") ; make things dir
     (save)
     (println "Generated scad files"))
