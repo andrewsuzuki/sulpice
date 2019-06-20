@@ -92,7 +92,7 @@
 
 ; height of thumb walls
 ; keyhole z position is calculated from this
-(def thumbs-wall-height 18)
+(def thumbs-wall-height 20)
 
 ; total number of thumb switches
 (def thumbs-total 5)
@@ -119,8 +119,9 @@
 (def trrs-port-diameter 4)
 
 ; usb port dimensions
-(def usb-port-width 6.8)
-(def usb-port-height 3)
+; (usb mini b is 7.7 x 3.9mm... give it some extra space)
+(def usb-port-width (+ 7.7 0.2))
+(def usb-port-height (+ 3.9 0.2))
 
 ; TRRS BREAKOUT BOARD MOUNT
 
@@ -154,7 +155,7 @@
 
 ; self-tapping m3 insert outside diameter
 ; actual insert is 4.8mm, but need to account for facets
-(def screw-insert-diameter 5.2)
+(def screw-insert-diameter 4.9)
 
 ; self-tapping m3 insert height
 (def screw-insert-height 6)
