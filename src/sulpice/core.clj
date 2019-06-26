@@ -2,12 +2,19 @@
   (:refer-clojure :exclude [use import])
   (:require [scad-clj.scad :refer :all]
             [scad-clj.model :refer :all]
-            [clojure.java.io :refer [make-parents]]))
+            [clojure.java.io :refer [make-parents]]
+            [sulpice.wrist-rest :as wrist-rest]))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Sulpice Keyboard ;
 ;; Andrew Suzuki    ;
 ;;;;;;;;;;;;;;;;;;;;;
+
+; TODO
+; - editorconfig
+; - wrist rest
+; - remove trrs platform (simply glue in place?)
+; - platform for teensy (and remove usb platform?)
 
 ;;;;;;;;;;;;;;;;
 ;; Parameters ;;
@@ -116,7 +123,7 @@
 (def trrs-port-offset 22)
 
 ; trrs port diameter
-(def trrs-port-diameter 4)
+(def trrs-port-diameter 6)
 
 ; usb port dimensions
 ; (usb mini b is 7.7 x 3.9mm... give it some extra space)
@@ -732,12 +739,12 @@
 (def thumbs
   (translate [0 thumbs-offset-y base-z]
              (union
-           ; top
+              ; top
               (translate [0 0 (- thumbs-wall-height keyhole-z)]
                          (union
                           thumbs-keyholes
                           thumbs-connectors))
-           ; walls
+              ; walls
               (translate [0 0 (/ thumbs-wall-height 2)] thumbs-walls))))
 
 ;;;;;;;;;;
@@ -1012,6 +1019,7 @@
       (difference left-cutouts)))
 
 (defn save []
+  (spit "things/wrist-rest.scad" (apply write-scad wrist-rest/final))
   (spit "things/right.scad" (apply write-scad right))
   (spit "things/left.scad" (apply write-scad left))
   (spit "things/bottom-right.scad" (apply write-scad bottom-right))
