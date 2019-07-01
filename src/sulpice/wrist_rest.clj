@@ -19,14 +19,14 @@
 (assert trace-file "wrist rest trace must exist")
 
 ; Height of the wrist rest platform
-(def platform-height 17)
-
-; Additional wall height (above / around the edges of the platform)
-(def extra-wall-height 3)
+(def platform-height 28)
 
 ; z-dimension (thickness) of the wrist rest platform
 ; (filled in below the specified height)
 (def platform-z 4)
+
+; Additional wall height (above / around the edges of the platform)
+(def extra-wall-height 5)
 
 ; wall thickness
 (def wall-thickness 3)

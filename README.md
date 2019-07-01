@@ -15,3 +15,7 @@ OpenSCAD model:
 Vaguely resembles the pipe organ console at *Saint Sulpice* in Paris:
 
 ![saint sulpice organ](https://i.imgur.com/7UH2tq8.jpg)
+
+Also includes a basic platform for a silicone wrist rest [like this](https://www.amazon.com/LetGoShop-Heart-Shaped-Translucence-Ergonomic-Effectively/dp/B07C1VW6N1).
+
+Copyright © 2019 Andrew Suzuki
