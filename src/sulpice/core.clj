@@ -10,11 +10,6 @@
 ;; Andrew Suzuki    ;
 ;;;;;;;;;;;;;;;;;;;;;
 
-; TODO
-
-; - platform for teensy (and remove usb platform?)
-; - new wrist rest (mousepad platform)
-
 ;;;;;;;;;;;;;;;;
 ;; Parameters ;;
 ;;;;;;;;;;;;;;;;
@@ -150,14 +145,29 @@
 
 ; USB BREAKOUT BOARD MOUNT
 
+(def usb-board-enable false)
+
 ; dimensions of the usb board
 (def usb-board-x 25)
 (def usb-board-y 19)
 (def usb-board-z 1.5)
 ; height of the usb board platform
 (def usb-board-platform-height 2)
-; z offset to bottom of jack (from top of board)
+; z offset to bottom of jack from top of board
 (def usb-board-jack-offset-z 0.5)
+
+; TEENSY 2.0 BOARD MOUNT
+
+(def teensy-board-enable true)
+
+; dimensions of the teensy board
+(def teensy-board-x 3)
+(def teensy-board-y 30.5)
+(def teensy-board-z 1.7)
+; height of the teensy board platform
+(def teensy-board-platform-height 2)
+; z offset to top/bottom of jack (depending on rotation) from top of board
+(def teensy-board-jack-offset-z 0.24)
 
 ; SCREWS
 
@@ -230,6 +240,9 @@
 
 (assert (>= cylinder-facet-number 10)
         "cylinder facet number should be >= 10")
+
+(assert (not (and teensy-board-enable usb-board-enable))
+        "cannot enable both teensy and usb boards")
 
 ;;;;;;;;;;;
 ;; Utils ;;
@@ -648,22 +661,44 @@
 
 ; usb board
 (def usb-board-left
-  (->> (make-board-mount
-        usb-board-x
-        usb-board-y
-        usb-board-z
-        :platform-height usb-board-platform-height
-        :clip-sides [:bottom :left :right])
-       (translate
-        (let [[x y z] usb-port-coord]
-          [x
-           (- y
-              (/ wall-thickness 2)
-              (/ usb-board-y 2))
-           (- z
-              (/ usb-board-platform-height 2)
-              (/ usb-port-height 2)
-              usb-board-jack-offset-z)]))))
+  (when usb-board-enable
+    (->> (make-board-mount
+          usb-board-x
+          usb-board-y
+          usb-board-z
+          :platform-height usb-board-platform-height
+          :clip-sides [:bottom :left :right])
+         (translate
+          (let [[x y z] usb-port-coord]
+            [x
+             (- y
+                (/ wall-thickness 2)
+                (/ usb-board-y 2))
+             (- z
+                (/ usb-board-platform-height 2)
+                (/ usb-port-height 2)
+                usb-board-jack-offset-z)])))))
+
+; teensy "board"
+(def teensy-board-left
+  (when teensy-board-enable
+    (->> (make-board-mount
+          teensy-board-x
+          teensy-board-y
+          teensy-board-z
+          :platform-height teensy-board-platform-height
+          :clip-sides [:bottom])
+        (rotate [0 pi 0])
+        (translate
+          (let [[x y z] usb-port-coord]
+            [x
+            (- y
+                (/ wall-thickness 2)
+                (/ teensy-board-y 2))
+            (+ z
+                (/ teensy-board-platform-height 2)
+                (/ usb-port-height 2)
+                teensy-board-jack-offset-z)])))))
 
 ;;;;;;;;;;;;;;;;;
 ; Thumb Cluster ;
@@ -1018,7 +1053,9 @@
 (def left
   (-> final
       (make-left)
-      (union trrs-board-left usb-board-left)
+      (union trrs-board-left
+             usb-board-left
+             teensy-board-left)
       (difference left-cutouts)))
 
 (defn save []
