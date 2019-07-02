@@ -11,10 +11,9 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 ; TODO
-; - editorconfig
-; - wrist rest
-; - remove trrs platform (simply glue in place?)
+
 ; - platform for teensy (and remove usb platform?)
+; - new wrist rest (mousepad platform)
 
 ;;;;;;;;;;;;;;;;
 ;; Parameters ;;
@@ -131,6 +130,8 @@
 (def usb-port-height (+ 3.9 0.2))
 
 ; TRRS BREAKOUT BOARD MOUNT
+
+(def trrs-board-enable false)
 
 ; dimensions of the trrs board
 (def trrs-board-x 13)
@@ -616,25 +617,27 @@
 
 ; place trrs board (right keyboard)
 (def trrs-board-right
-  (->> (make-board-mount
-        trrs-board-x
-        trrs-board-y
-        trrs-board-z
-        :cutoff-y trrs-board-y-cutoff
-        :platform-height trrs-board-platform-height
-        :clip-sides [:top :right])
-       (translate trrs-board-translate-right)))
+  (when trrs-board-enable
+    (->> (make-board-mount
+          trrs-board-x
+          trrs-board-y
+          trrs-board-z
+          :cutoff-y trrs-board-y-cutoff
+          :platform-height trrs-board-platform-height
+          :clip-sides [:top :right])
+         (translate trrs-board-translate-right))))
 
 ; place trrs board (left keyboard)
 (def trrs-board-left
-  (->> (make-board-mount
-        trrs-board-x
-        trrs-board-y
-        trrs-board-z
-        :cutoff-y (-' trrs-board-y-cutoff)
-        :platform-height trrs-board-platform-height
-        :clip-sides [:bottom :left])
-       (translate trrs-board-translate-left)))
+  (when trrs-board-enable
+    (->> (make-board-mount
+          trrs-board-x
+          trrs-board-y
+          trrs-board-z
+          :cutoff-y (-' trrs-board-y-cutoff)
+          :platform-height trrs-board-platform-height
+          :clip-sides [:bottom :left])
+         (translate trrs-board-translate-left))))
 
 ; coordinates of the usb port (left keyboard)
 (def usb-port-coord
